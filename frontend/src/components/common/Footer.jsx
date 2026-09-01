@@ -1,10 +1,20 @@
 import React from 'react';
 import { Trophy, MapPin, Phone, Mail, Clock } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useVenue } from '../../context/VenueContext';
 
 const Footer = () => {
   const { venue } = useVenue();
+  const location = useLocation();
+
+  const getVenueLink = (targetPath) => {
+    const params = new URLSearchParams(location.search);
+    const slug = params.get('venue') || params.get('v') || (venue?.slug && venue.slug !== 'chocair-arena' ? venue.slug : '');
+    if (slug) {
+      return `${targetPath}?venue=${slug}`;
+    }
+    return targetPath;
+  };
 
   const brandName = venue?.name || '';
   const address = venue?.address ? `${venue.address}${venue.city ? `, ${venue.city}` : ''}` : '';
@@ -65,9 +75,9 @@ const Footer = () => {
               Quick Links
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              <Link to="/" style={{ transition: 'color 0.2s' }}>Home</Link>
-              <Link to="/booking" style={{ transition: 'color 0.2s' }}>Check Live Availability</Link>
-              <Link to="/lookup" style={{ transition: 'color 0.2s' }}>Look Up My Booking</Link>
+              <Link to={getVenueLink('/')} style={{ transition: 'color 0.2s' }}>Home</Link>
+              <Link to={getVenueLink('/booking')} style={{ transition: 'color 0.2s' }}>Check Live Availability</Link>
+              <Link to={getVenueLink('/lookup')} style={{ transition: 'color 0.2s' }}>Look Up My Booking</Link>
               <Link to="/login" style={{ transition: 'color 0.2s' }}>Staff & Admin Access</Link>
             </div>
           </div>

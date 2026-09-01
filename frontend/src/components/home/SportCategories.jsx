@@ -33,7 +33,8 @@ const SportCategories = () => {
 
   const handleSelectSport = (sportId) => {
     setSelectedSport(sportId);
-    navigate(`/booking?sport=${sportId}`);
+    const venueQuery = venue?.slug && venue.slug !== 'chocair-arena' ? `&venue=${venue.slug}` : '';
+    navigate(`/booking?sport=${sportId}${venueQuery}`);
   };
 
   const getSportCountText = (sportId) => {

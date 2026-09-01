@@ -32,7 +32,7 @@ const formatPublicVenue = (venue) => {
   };
 };
 
-// @desc    Resolve venue by custom domain, subdomain, slug, or default active
+// @desc    Resolve venue by custom domain, subdomain, slug, or default active (Chocair Arena)
 // @route   GET /api/venues/resolve
 // @access  Public
 export const resolveVenue = asyncHandler(async (req, res) => {
@@ -43,34 +43,17 @@ export const resolveVenue = asyncHandler(async (req, res) => {
 
   let venue = null;
 
-  // 1. Resolve by venueId
-  const targetVenueId = venueId || headerVenueId;
-  if (targetVenueId) {
-    venue = await Venue.findOne({ venueId: targetVenueId, status: { $ne: 'inactive' } });
-  }
-
-  // 2. Resolve by slug
-  const targetSlug = slug || headerVenueSlug;
-  if (!venue && targetSlug) {
-    venue = await Venue.findOne({ slug: targetSlug.toLowerCase(), status: { $ne: 'inactive' } });
-  }
-
-  // 3. Resolve by subdomain parameter or host subdomain
-  const targetSubdomain = subdomain;
-  if (!venue && targetSubdomain) {
-    venue = await Venue.findOne({ subdomain: targetSubdomain.toLowerCase(), status: { $ne: 'inactive' } });
-  }
-
-  // 4. Resolve by customDomain or hostname match
+  // PRIORITY 1: Custom domain or hostname match
   const checkHost = (host || headerHost).toLowerCase();
-  if (!venue && checkHost && checkHost !== 'localhost' && checkHost !== '127.0.0.1') {
+  if (checkHost && checkHost !== 'localhost' && checkHost !== '127.0.0.1') {
     // Check exact custom domain
     venue = await Venue.findOne({ customDomain: checkHost, status: { $ne: 'inactive' } });
 
-    // Check subdomain pattern (e.g. "chocair.sportszone.com")
+    // Check subdomain pattern (e.g. "chocair.domain.com" or "beirut-hub.domain.com")
     if (!venue && checkHost.includes('.')) {
-      const sub = checkHost.split('.')[0];
-      if (sub && sub !== 'www' && sub !== 'app') {
+      const parts = checkHost.split('.');
+      const sub = parts[0];
+      if (sub && sub !== 'www' && sub !== 'app' && !parts.includes('vercel') && !parts.includes('onrender')) {
         venue = await Venue.findOne({
           $or: [{ subdomain: sub }, { slug: sub }],
           status: { $ne: 'inactive' },
@@ -79,7 +62,38 @@ export const resolveVenue = asyncHandler(async (req, res) => {
     }
   }
 
-  // 5. Fallback: Default active venue
+  // PRIORITY 2: Dedicated Subdomain parameter
+  const targetSubdomain = subdomain;
+  if (!venue && targetSubdomain) {
+    venue = await Venue.findOne({ subdomain: targetSubdomain.toLowerCase().trim(), status: { $ne: 'inactive' } });
+  }
+
+  // PRIORITY 3: Explicit ?venue=slug (URL query parameter ALWAYS takes precedence over default)
+  const targetSlug = slug || headerVenueSlug;
+  if (!venue && targetSlug) {
+    const cleanSlug = targetSlug.toLowerCase().trim();
+    venue = await Venue.findOne({ slug: cleanSlug, status: { $ne: 'inactive' } });
+    if (!venue) {
+      venue = await Venue.findOne({ subdomain: cleanSlug, status: { $ne: 'inactive' } });
+    }
+  }
+
+  // Explicit venueId parameter
+  const targetVenueId = venueId || headerVenueId;
+  if (!venue && targetVenueId) {
+    venue = await Venue.findOne({ venueId: targetVenueId, status: { $ne: 'inactive' } });
+  }
+
+  // PRIORITY 4: DEFAULT FALLBACK — ALWAYS CHOCAIR ARENA
+  if (!venue) {
+    venue = await Venue.findOne({ slug: 'chocair-arena', status: { $ne: 'inactive' } });
+  }
+  if (!venue) {
+    venue = await Venue.findOne({ name: { $regex: /chocair/i }, status: { $ne: 'inactive' } });
+  }
+  if (!venue) {
+    venue = await Venue.findOne({ isFeatureVenue: true, status: 'active' });
+  }
   if (!venue) {
     venue = await Venue.findOne({ status: 'active' });
   }
@@ -97,11 +111,20 @@ export const resolveVenue = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get active venue info (public endpoint for initial app branding load)
+// @desc    Get active venue info (public endpoint for initial app branding load — defaults to Chocair Arena)
 // @route   GET /api/venues/active
 // @access  Public
 export const getActiveVenue = asyncHandler(async (req, res) => {
-  const venue = await Venue.findOne({ status: 'active' });
+  let venue = await Venue.findOne({ slug: 'chocair-arena', status: { $ne: 'inactive' } });
+  if (!venue) {
+    venue = await Venue.findOne({ name: { $regex: /chocair/i }, status: { $ne: 'inactive' } });
+  }
+  if (!venue) {
+    venue = await Venue.findOne({ isFeatureVenue: true, status: 'active' });
+  }
+  if (!venue) {
+    venue = await Venue.findOne({ status: 'active' });
+  }
 
   if (!venue) {
     return res.status(200).json({

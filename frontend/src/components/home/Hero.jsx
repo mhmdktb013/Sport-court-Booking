@@ -1,8 +1,21 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { useVenue } from '../../context/VenueContext';
 import { Calendar, ShieldCheck, Zap, Award, ArrowRight } from 'lucide-react';
 
 const Hero = () => {
+  const { venue } = useVenue();
+  const location = useLocation();
+
+  const getVenueLink = (targetPath) => {
+    const params = new URLSearchParams(location.search);
+    const slug = params.get('venue') || params.get('v') || (venue?.slug && venue.slug !== 'chocair-arena' ? venue.slug : '');
+    if (slug) {
+      return `${targetPath}?venue=${slug}`;
+    }
+    return targetPath;
+  };
+
   return (
     <section style={{
       position: 'relative',
@@ -63,10 +76,10 @@ const Hero = () => {
 
           {/* Action CTAs */}
           <div className="flex justify-center items-center gap-4" style={{ flexWrap: 'wrap' }}>
-            <Link to="/booking" className="btn btn-primary btn-lg">
+            <Link to={getVenueLink('/booking')} className="btn btn-primary btn-lg">
               <Calendar size={20} /> Find & Book Court Now
             </Link>
-            <Link to="/lookup" className="btn btn-secondary btn-lg">
+            <Link to={getVenueLink('/lookup')} className="btn btn-secondary btn-lg">
               Manage / Find Booking <ArrowRight size={18} />
             </Link>
           </div>

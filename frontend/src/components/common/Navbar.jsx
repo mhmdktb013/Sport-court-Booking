@@ -12,6 +12,16 @@ const Navbar = () => {
 
   const isActive = (path) => location.pathname === path;
 
+  // Helper to preserve venue query param across navigation
+  const getVenueLink = (targetPath) => {
+    const params = new URLSearchParams(location.search);
+    const slug = params.get('venue') || params.get('v') || (venue?.slug && venue.slug !== 'chocair-arena' ? venue.slug : '');
+    if (slug) {
+      return `${targetPath}?venue=${slug}`;
+    }
+    return targetPath;
+  };
+
   const brandName = venue?.name || '';
   const subtitle = venue?.city ? `${venue.city} Arena & Court Booking` : (venue?.name ? `${venue.name} Court Booking` : '');
 
@@ -26,7 +36,7 @@ const Navbar = () => {
     }}>
       <div className="container flex items-center justify-between" style={{ height: '70px' }}>
         {/* Brand Logo */}
-        <Link to="/" className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
+        <Link to={getVenueLink('/')} className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
           {venue?.logoUrl ? (
             <img
               src={venue.logoUrl}
@@ -78,7 +88,7 @@ const Navbar = () => {
         
         <div className="desktop-nav items-center gap-8" style={{ display: 'none' }}>
           <Link
-            to="/"
+            to={getVenueLink('/')}
             style={{
               fontSize: '0.9375rem',
               fontWeight: 600,
@@ -89,7 +99,7 @@ const Navbar = () => {
             Home
           </Link>
           <Link
-            to="/booking"
+            to={getVenueLink('/booking')}
             style={{
               fontSize: '0.9375rem',
               fontWeight: 600,
@@ -100,7 +110,7 @@ const Navbar = () => {
             Book Court
           </Link>
           <Link
-            to="/lookup"
+            to={getVenueLink('/lookup')}
             style={{
               fontSize: '0.9375rem',
               fontWeight: 600,
@@ -124,7 +134,7 @@ const Navbar = () => {
 
         {/* Desktop Right CTA */}
         <div className="desktop-nav items-center gap-3" style={{ display: 'none' }}>
-          <Link to="/booking" className="btn btn-primary btn-sm">
+          <Link to={getVenueLink('/booking')} className="btn btn-primary btn-sm">
             <Calendar size={16} /> Book Now
           </Link>
 
@@ -161,7 +171,7 @@ const Navbar = () => {
           gap: '1rem',
         }}>
           <Link
-            to="/"
+            to={getVenueLink('/')}
             onClick={() => setMobileMenuOpen(false)}
             style={{
               padding: '0.5rem 0',
@@ -172,7 +182,7 @@ const Navbar = () => {
             Home
           </Link>
           <Link
-            to="/booking"
+            to={getVenueLink('/booking')}
             onClick={() => setMobileMenuOpen(false)}
             style={{
               padding: '0.5rem 0',
@@ -183,7 +193,7 @@ const Navbar = () => {
             Book Court
           </Link>
           <Link
-            to="/lookup"
+            to={getVenueLink('/lookup')}
             onClick={() => setMobileMenuOpen(false)}
             style={{
               padding: '0.5rem 0',
@@ -207,7 +217,7 @@ const Navbar = () => {
 
           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
             <Link
-              to="/booking"
+              to={getVenueLink('/booking')}
               onClick={() => setMobileMenuOpen(false)}
               className="btn btn-primary"
               style={{ flex: 1 }}

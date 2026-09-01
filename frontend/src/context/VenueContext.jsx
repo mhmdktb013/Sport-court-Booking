@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { venueService } from '../services/api';
 
 const VenueContext = createContext();
@@ -11,12 +11,25 @@ export const useVenue = () => {
   return context;
 };
 
-// Helper to get cached venue from localStorage to avoid initial flicker
+// Helper to get cached venue from localStorage ONLY if it matches the current URL slug or default
 const getCachedVenue = () => {
   try {
+    const params = new URLSearchParams(window.location.search);
+    const slugParam = (params.get('venue') || params.get('v') || params.get('slug') || '').toLowerCase().trim();
     const cached = localStorage.getItem('active_venue_cache');
     if (cached) {
-      return JSON.parse(cached);
+      const parsed = JSON.parse(cached);
+      // If URL has explicit slug, only use cache if it matches that slug
+      if (slugParam) {
+        if (parsed.slug === slugParam || parsed.subdomain === slugParam) {
+          return parsed;
+        }
+        return null;
+      }
+      // If no slug param in URL, only use cache if it's the default (chocair-arena)
+      if (parsed.slug === 'chocair-arena') {
+        return parsed;
+      }
     }
   } catch (e) {
     // ignore
@@ -29,33 +42,43 @@ export const VenueProvider = ({ children }) => {
   const [loading, setLoading] = useState(!venue);
   const [error, setError] = useState(null);
 
-  // Apply theme immediately if cached venue exists
+  // Apply theme colors and document title dynamically
   useEffect(() => {
-    const current = venue || getCachedVenue();
-    if (current) {
+    if (venue) {
       const root = document.documentElement;
-      if (current.primaryColor) {
-        root.style.setProperty('--primary', current.primaryColor);
-        root.style.setProperty('--primary-glow', `${current.primaryColor}4d`);
+      if (venue.primaryColor) {
+        root.style.setProperty('--primary', venue.primaryColor);
+        root.style.setProperty('--primary-glow', `${venue.primaryColor}4d`);
       }
-      if (current.secondaryColor) {
-        root.style.setProperty('--secondary', current.secondaryColor);
+      if (venue.secondaryColor) {
+        root.style.setProperty('--secondary', venue.secondaryColor);
       }
-      if (current.accentColor) {
-        root.style.setProperty('--accent', current.accentColor);
+      if (venue.accentColor) {
+        root.style.setProperty('--accent', venue.accentColor);
       }
-      if (current.name) {
-        document.title = `${current.name} — Court Bookings`;
+      if (venue.name) {
+        document.title = `${venue.name} — Court Bookings`;
       }
     }
   }, [venue]);
 
-  // Fetch venue settings from API (Admin settings if authenticated, otherwise resolved venue by host/slug)
-  const fetchVenueSettings = async () => {
+  // Fetch venue settings from API based on strict priority:
+  // 1. Custom domain / Hostname
+  // 2. Subdomain
+  // 3. ?venue=slug (URL Query Parameter always takes priority over cache & default)
+  // 4. Chocair Arena (Default Fallback)
+  const fetchVenueSettings = useCallback(async () => {
     try {
-      setLoading(!venue);
+      // Check URL parameters first (URL IS THE ABSOLUTE SOURCE OF TRUTH)
+      const params = new URLSearchParams(window.location.search);
+      const slugParam = (params.get('venue') || params.get('v') || params.get('slug') || '').trim();
+      const venueIdParam = (params.get('venueId') || '').trim();
+      const host = window.location.hostname;
+      const pathname = window.location.pathname;
+
+      // If on /admin page and no explicit public slug in URL, allow logged in admin venue settings
       const token = localStorage.getItem('sportszone_token');
-      if (token) {
+      if (pathname.startsWith('/admin') && !slugParam && token) {
         try {
           const response = await venueService.getVenueSettings();
           if (response.data.venue) {
@@ -67,16 +90,11 @@ export const VenueProvider = ({ children }) => {
             return;
           }
         } catch (adminErr) {
-          console.warn('Admin venue settings fetch failed, falling back to public venue resolution:', adminErr.message);
+          console.warn('Admin venue settings fetch fallback:', adminErr.message);
         }
       }
 
-      // Check URL parameters for explicit tenant slug or venueId override
-      const params = new URLSearchParams(window.location.search);
-      const slugParam = params.get('venue') || params.get('v') || params.get('slug');
-      const venueIdParam = params.get('venueId');
-      const host = window.location.hostname;
-
+      // Public venue resolution via resolve endpoint
       const resolveParams = {};
       if (venueIdParam) resolveParams.venueId = venueIdParam;
       if (slugParam) resolveParams.slug = slugParam;
@@ -96,9 +114,9 @@ export const VenueProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Update venue settings
+  // Update venue settings (Admin)
   const updateVenue = async (updates) => {
     try {
       setLoading(true);
@@ -119,10 +137,19 @@ export const VenueProvider = ({ children }) => {
     }
   };
 
-  // Load venue settings on mount
+  // Load venue settings on mount and listen to popstate/URL changes
   useEffect(() => {
     fetchVenueSettings();
-  }, []);
+
+    const handleLocationChange = () => {
+      fetchVenueSettings();
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, [fetchVenueSettings]);
 
   const value = {
     venue,

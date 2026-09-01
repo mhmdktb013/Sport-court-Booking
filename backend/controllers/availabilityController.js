@@ -9,17 +9,36 @@ import { computeCourtAvailability, generateDayTimeSlots } from '../services/avai
 // @route   GET /api/availability
 // @access  Public
 export const getAvailability = asyncHandler(async (req, res) => {
-  const { date, sport, venueId: queryVenueId } = req.query;
+  const { date, sport, venueId: queryVenueId, venue: queryVenueSlug, slug: querySlug } = req.query;
 
   const targetDate = date || new Date().toISOString().split('T')[0];
   let venueId = req.user?.venueId || queryVenueId;
 
-  // If no venueId specified, try to find the active venue default
+  // If slug provided instead of venueId
+  const targetSlug = queryVenueSlug || querySlug;
+  if (!venueId && targetSlug) {
+    const slugVenue = await Venue.findOne({ slug: targetSlug.toLowerCase().trim(), status: { $ne: 'inactive' } });
+    if (slugVenue) {
+      venueId = slugVenue.venueId;
+    }
+  }
+
+  // Resolve venue document
   let venue = null;
   if (venueId) {
-    venue = await Venue.findOne({ venueId, status: 'active' });
+    venue = await Venue.findOne({ venueId, status: { $ne: 'inactive' } });
   } else {
-    venue = await Venue.findOne({ status: 'active' });
+    // Default fallback to Chocair Arena
+    venue = await Venue.findOne({ slug: 'chocair-arena', status: { $ne: 'inactive' } });
+    if (!venue) {
+      venue = await Venue.findOne({ name: { $regex: /chocair/i }, status: { $ne: 'inactive' } });
+    }
+    if (!venue) {
+      venue = await Venue.findOne({ isFeatureVenue: true, status: 'active' });
+    }
+    if (!venue) {
+      venue = await Venue.findOne({ status: 'active' });
+    }
     if (venue) {
       venueId = venue.venueId;
     }

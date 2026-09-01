@@ -1,12 +1,25 @@
 import asyncHandler from 'express-async-handler';
 import Court from '../models/courtModel.js';
+import Venue from '../models/venueModel.js';
 
-const getTenantVenueId = (req) => {
-  const requestedVenueId = req.query?.venueId || req.body?.venueId;
+const getTenantVenueId = async (req) => {
   if (req.user?.venueId) {
     return req.user.venueId;
   }
-  return requestedVenueId || null;
+  if (req.query?.venueId || req.body?.venueId) {
+    return req.query?.venueId || req.body?.venueId;
+  }
+  if (req.query?.venue || req.query?.slug) {
+    const slug = req.query?.venue || req.query?.slug;
+    const v = await Venue.findOne({ slug: slug.toLowerCase().trim() });
+    if (v) return v.venueId;
+  }
+  // Default to Chocair Arena
+  const defaultVenue = await Venue.findOne({ slug: 'chocair-arena' });
+  if (defaultVenue) {
+    return defaultVenue.venueId;
+  }
+  return null;
 };
 
 // @desc    Get all active courts with optional sport filter
@@ -14,7 +27,7 @@ const getTenantVenueId = (req) => {
 // @access  Public
 export const getCourts = asyncHandler(async (req, res) => {
   const { sport, active } = req.query;
-  const venueId = getTenantVenueId(req);
+  const venueId = await getTenantVenueId(req);
   const filter = {};
 
   if (venueId) {
@@ -36,7 +49,7 @@ export const getCourts = asyncHandler(async (req, res) => {
 // @route   GET /api/courts/featured
 // @access  Public
 export const getFeaturedCourts = asyncHandler(async (req, res) => {
-  const venueId = getTenantVenueId(req);
+  const venueId = await getTenantVenueId(req);
   const filter = { isActive: true };
 
   if (venueId) {
@@ -53,7 +66,7 @@ export const getFeaturedCourts = asyncHandler(async (req, res) => {
 // @route   GET /api/courts/:id
 // @access  Public
 export const getCourtById = asyncHandler(async (req, res) => {
-  const venueId = getTenantVenueId(req);
+  const venueId = await getTenantVenueId(req);
   const filter = { _id: req.params.id };
 
   if (venueId) {

@@ -31,7 +31,8 @@ const FeaturedCourts = () => {
 
   const handleBookCourt = (court) => {
     setSelectedSport(court.sportType);
-    navigate(`/booking?sport=${court.sportType}`);
+    const venueQuery = venue?.slug && venue.slug !== 'chocair-arena' ? `&venue=${venue.slug}` : '';
+    navigate(`/booking?sport=${court.sportType}${venueQuery}`);
   };
 
   const getSportBadgeColor = (sport) => {
