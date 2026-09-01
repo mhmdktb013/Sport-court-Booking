@@ -1,25 +1,33 @@
 import React, { useState, useMemo } from 'react';
 import { useBooking } from '../../context/BookingContext';
-import { ChevronRight, ChevronDown, ChevronLeft, Calendar as CalendarIcon, Clock, Shield, Sparkles, Check, Sun, Moon } from 'lucide-react';
+import { useVenue } from '../../context/VenueContext';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Calendar as CalendarIcon,
+  Sun,
+  Moon,
+  Lock,
+  Sparkles,
+  Share2,
+} from 'lucide-react';
 
-// Format 24h (HH:mm) into 12h AM/PM
+// 12-hour format helper
 function format12Hour(timeStr) {
-  if (!timeStr) return '';
+  if (!timeStr) return { time: '', ampm: '', formatted: '' };
   const [hStr, mStr] = timeStr.split(':');
   let h = parseInt(hStr, 10);
   const ampm = h >= 12 ? 'PM' : 'AM';
   h = h % 12;
   if (h === 0) h = 12;
-  return `${h}:${mStr} ${ampm}`;
+  return {
+    time: `${h}:${mStr}`,
+    ampm,
+    formatted: `${h}:${mStr} ${ampm}`,
+  };
 }
-
-const sportsList = [
-  { id: 'all', label: 'All', icon: '🏆' },
-  { id: 'football', label: 'Football', icon: '⚽' },
-  { id: 'padel', label: 'Padel', icon: '🎾' },
-  { id: 'tennis', label: 'Tennis', icon: '🎾' },
-  { id: 'basketball', label: 'Basketball', icon: '🏀' },
-];
 
 const MobileBookingExperience = ({ availabilityData }) => {
   const {
@@ -30,20 +38,48 @@ const MobileBookingExperience = ({ availabilityData }) => {
     selectSlotForBooking,
   } = useBooking();
 
-  // Booking mode: 'time' (By Time) vs 'court' (By Court)
-  const [bookingMode, setBookingMode] = useState('time');
-  // Time of day filter: 'all' | 'am' | 'pm'
-  const [timeFilter, setTimeFilter] = useState('all');
-  // Expanded time slot in 'By Time' mode
-  const [expandedTime, setExpandedTime] = useState(null);
-  // Expanded court in 'By Court' mode
-  const [expandedCourtId, setExpandedCourtId] = useState(null);
+  const { venue } = useVenue();
+  const currencySymbol = venue?.currencySymbol || '$';
 
-  // Generate 14-day date pills formatted like: WED 26/8, THU 27/8
-  const datePills = useMemo(() => {
+  // State
+  const [bookingMode, setBookingMode] = useState('hour'); // 'hour' (By Hour) | 'court' (By Court)
+  const [timePeriod, setTimePeriod] = useState('all'); // 'all' | 'am' | 'pm'
+  const [expandedHour, setExpandedHour] = useState(null); // startTime of expanded slot
+  const [dateStartIndex, setDateStartIndex] = useState(0);
+
+  // Extract sports actually present in the courts
+  const sportsList = useMemo(() => {
+    const defaultSports = [
+      { id: 'football', label: 'Football', icon: '⚽' },
+      { id: 'padel', label: 'Padel', icon: '🎾' },
+      { id: 'tennis', label: 'Tennis', icon: '🎾' },
+      { id: 'basketball', label: 'Basketball', icon: '🏀' },
+    ];
+
+    if (!availabilityData?.courtsAvailability?.length) {
+      return defaultSports;
+    }
+
+    const detected = new Set(
+      availabilityData.courtsAvailability.map((c) => c.court.sportType)
+    );
+
+    const list = defaultSports.filter((s) => detected.has(s.id));
+    return list.length > 0 ? list : defaultSports;
+  }, [availabilityData]);
+
+  // Set initial selected sport if current is 'all'
+  React.useEffect(() => {
+    if (selectedSport === 'all' && sportsList.length > 0) {
+      setSelectedSport(sportsList[0].id);
+    }
+  }, [selectedSport, sportsList, setSelectedSport]);
+
+  // Generate 30 days of selectable date pills
+  const allDatePills = useMemo(() => {
     const pills = [];
     const base = new Date();
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 30; i++) {
       const d = new Date(base);
       d.setDate(base.getDate() + i);
       const dateStr = d.toISOString().split('T')[0];
@@ -52,14 +88,31 @@ const MobileBookingExperience = ({ availabilityData }) => {
       const monthNum = d.getMonth() + 1;
       pills.push({
         dateStr,
-        label: `${dayName} ${dayNum}/${monthNum}`,
+        dayName,
+        dayNum,
+        monthNum,
+        label: `${dayNum}/${monthNum}`,
+        fullDateFormatted: `${String(dayNum).padStart(2, '0')}/${String(monthNum).padStart(2, '0')}/${d.getFullYear()}`,
         isToday: i === 0,
       });
     }
     return pills;
   }, []);
 
-  // Aggregate time slots across all courts for the selected sport & date
+  // Visible slice of date pills (7 visible at a time with prev/next arrows)
+  const visibleDatePills = useMemo(() => {
+    return allDatePills.slice(dateStartIndex, dateStartIndex + 7);
+  }, [allDatePills, dateStartIndex]);
+
+  const handlePrevDates = () => {
+    setDateStartIndex((prev) => Math.max(0, prev - 4));
+  };
+
+  const handleNextDates = () => {
+    setDateStartIndex((prev) => Math.min(allDatePills.length - 7, prev + 4));
+  };
+
+  // Aggregate time slots across all courts for this sport & date
   const aggregatedTimeSlots = useMemo(() => {
     if (!availabilityData || !availabilityData.courtsAvailability?.length) {
       return [];
@@ -68,222 +121,330 @@ const MobileBookingExperience = ({ availabilityData }) => {
     const { timeHeaders, courtsAvailability } = availabilityData;
 
     return timeHeaders.map((header) => {
-      const availableCourts = [];
-      let totalForSlot = 0;
+      const courtsStatusList = [];
+      let availableCount = 0;
+      let bookedCount = 0;
       let pastCount = 0;
       let blockedCount = 0;
 
       courtsAvailability.forEach((courtObj) => {
         const slot = courtObj.slots.find((s) => s.startTime === header.startTime);
         if (slot) {
-          totalForSlot++;
-          if (slot.status === 'available') {
-            availableCourts.push({
-              court: courtObj.court,
-              slot,
-            });
-          } else if (slot.status === 'past') {
-            pastCount++;
-          } else if (slot.status === 'blocked') {
-            blockedCount++;
-          }
+          const isAvailable = slot.status === 'available';
+          const isBooked = slot.status === 'booked';
+          const isPast = slot.status === 'past';
+          const isBlocked = slot.status === 'blocked';
+
+          if (isAvailable) availableCount++;
+          if (isBooked) bookedCount++;
+          if (isPast) pastCount++;
+          if (isBlocked) blockedCount++;
+
+          courtsStatusList.push({
+            court: courtObj.court,
+            slot,
+            isAvailable,
+            isBooked,
+            isPast,
+            isBlocked,
+          });
         }
       });
 
+      const start12 = format12Hour(header.startTime);
+      const end12 = format12Hour(header.endTime);
       const [startH] = header.startTime.split(':').map(Number);
       const period = startH < 12 ? 'am' : 'pm';
 
       return {
         startTime: header.startTime,
         endTime: header.endTime,
-        formattedStart: format12Hour(header.startTime),
-        formattedEnd: format12Hour(header.endTime),
+        start12,
+        end12,
         period,
-        availableCount: availableCourts.length,
-        totalCount: totalForSlot,
-        isPast: pastCount > 0 && availableCourts.length === 0,
-        isFullyBooked: availableCourts.length === 0 && pastCount === 0,
-        availableCourts,
+        availableCount,
+        totalCount: courtsStatusList.length,
+        isPast: pastCount > 0 && availableCount === 0,
+        isFull: availableCount === 0 && !pastCount,
+        courtsStatusList,
       };
     });
   }, [availabilityData]);
 
-  // Filter time slots by AM / PM
+  // Filter slots by AM/PM
   const filteredTimeSlots = useMemo(() => {
-    if (timeFilter === 'all') return aggregatedTimeSlots;
-    return aggregatedTimeSlots.filter((slot) => slot.period === timeFilter);
-  }, [aggregatedTimeSlots, timeFilter]);
+    if (timePeriod === 'all') return aggregatedTimeSlots;
+    return aggregatedTimeSlots.filter((slot) => slot.period === timePeriod);
+  }, [aggregatedTimeSlots, timePeriod]);
 
-  const handleSlotToggle = (startTime, availableCount) => {
-    if (availableCount === 0) return;
-    setExpandedTime((prev) => (prev === startTime ? null : startTime));
+  // Auto-expand first slot with availability if none expanded
+  React.useEffect(() => {
+    if (!expandedHour && filteredTimeSlots.length > 0) {
+      const firstAvailable = filteredTimeSlots.find((s) => s.availableCount > 0);
+      if (firstAvailable) {
+        setExpandedHour(firstAvailable.startTime);
+      }
+    }
+  }, [filteredTimeSlots, expandedHour]);
+
+  const handleToggleHour = (startTime) => {
+    setExpandedHour((prev) => (prev === startTime ? null : startTime));
   };
 
-  const handleCourtToggle = (courtId) => {
-    setExpandedCourtId((prev) => (prev === courtId ? null : courtId));
-  };
+  const selectedPill = allDatePills.find((p) => p.dateStr === selectedDate) || allDatePills[0];
 
   return (
-    <div className="mobile-booking-container">
-      {/* 1. SPORT SELECTOR PILLS */}
-      <div className="mobile-sports-scroll">
+    <div className="sz-mobile-app-wrapper">
+      {/* 1. TOP PROMO / SHARE HERO BANNER */}
+      <div className="sz-promo-banner">
+        <div className="sz-promo-badge">
+          <Share2 size={13} />
+          <span>INSTANT MATCH LINK</span>
+        </div>
+        <div className="sz-promo-title">
+          SHARE THE BOOKING LINK WITH YOUR FRIENDS
+        </div>
+        <div className="sz-promo-sub">
+          Lock in your match time, split the court fee, and get instant verified booking.
+        </div>
+      </div>
+
+      {/* 2. SPORT RADIO PILLS */}
+      <div className="sz-sport-pills-row">
         {sportsList.map((sport) => {
           const isActive = selectedSport === sport.id;
           return (
             <button
               key={sport.id}
               onClick={() => setSelectedSport(sport.id)}
-              className={`mobile-sport-chip ${isActive ? 'active' : ''}`}
+              className={`sz-sport-pill ${isActive ? 'active' : ''}`}
             >
-              <span>{sport.icon}</span>
-              <span>{sport.label}</span>
+              <span className="sz-sport-radio-dot"></span>
+              <span className="sz-sport-icon">{sport.icon}</span>
+              <span className="sz-sport-name">{sport.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* 2. BOOKING MODE TOGGLE: [ By Time ] [ By Court ] */}
-      <div className="mobile-mode-toggle-bar">
-        <div className="mobile-mode-toggle">
+      {/* 3. VIEW MODE & DATE PICKER HEADER */}
+      <div className="sz-controls-header">
+        {/* Toggle [ By Hour ] [ By Court ] */}
+        <div className="sz-mode-toggle">
           <button
-            onClick={() => setBookingMode('time')}
-            className={`mobile-mode-btn ${bookingMode === 'time' ? 'active' : ''}`}
+            onClick={() => setBookingMode('hour')}
+            className={`sz-mode-btn ${bookingMode === 'hour' ? 'active' : ''}`}
           >
-            By Time
+            By Hour
           </button>
           <button
             onClick={() => setBookingMode('court')}
-            className={`mobile-mode-btn ${bookingMode === 'court' ? 'active' : ''}`}
+            className={`sz-mode-btn ${bookingMode === 'court' ? 'active' : ''}`}
           >
             By Court
           </button>
         </div>
+
+        {/* Date Display Pill with Native Datepicker */}
+        <label className="sz-date-input-label">
+          <CalendarIcon size={16} className="sz-date-icon" />
+          <span className="sz-date-text">{selectedPill.fullDateFormatted}</span>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+            className="sz-native-date-hidden"
+          />
+        </label>
       </div>
 
-      {/* 3. DATE SELECTOR STRIP: < WED 26/8  THU 27/8  FRI 28/8 ... > */}
-      <div className="mobile-date-strip-wrapper">
-        <div className="mobile-date-strip">
-          {datePills.map((p) => {
+      {/* 4. HORIZONTAL CALENDAR STRIP */}
+      <div className="sz-date-strip-container">
+        <button
+          onClick={handlePrevDates}
+          disabled={dateStartIndex === 0}
+          className="sz-date-arrow-btn"
+          aria-label="Previous dates"
+        >
+          <ChevronLeft size={16} />
+        </button>
+
+        <div className="sz-date-strip-list">
+          {visibleDatePills.map((p) => {
             const isSelected = p.dateStr === selectedDate;
             return (
               <button
                 key={p.dateStr}
-                onClick={() => setSelectedDate(p.dateStr)}
-                className={`mobile-date-item ${isSelected ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedDate(p.dateStr);
+                  setExpandedHour(null);
+                }}
+                className={`sz-date-box ${isSelected ? 'active' : ''}`}
               >
-                {p.label}
+                <span className="sz-date-dayname">{p.dayName}</span>
+                <span className="sz-date-daynum">{p.dayNum}/{p.monthNum}</span>
               </button>
             );
           })}
         </div>
+
+        <button
+          onClick={handleNextDates}
+          disabled={dateStartIndex >= allDatePills.length - 7}
+          className="sz-date-arrow-btn"
+          aria-label="Next dates"
+        >
+          <ChevronRight size={16} />
+        </button>
       </div>
 
-      {/* 4. AM / PM FILTER TOGGLE (Only in By Time mode) */}
-      {bookingMode === 'time' && (
-        <div className="mobile-ampm-bar">
-          <div className="mobile-ampm-toggle">
-            <button
-              onClick={() => setTimeFilter('all')}
-              className={`mobile-ampm-btn ${timeFilter === 'all' ? 'active' : ''}`}
-            >
-              All Day
-            </button>
-            <button
-              onClick={() => setTimeFilter('am')}
-              className={`mobile-ampm-btn ${timeFilter === 'am' ? 'active' : ''}`}
-            >
-              <Sun size={13} style={{ display: 'inline', marginRight: '4px' }} />
-              AM
-            </button>
-            <button
-              onClick={() => setTimeFilter('pm')}
-              className={`mobile-ampm-btn ${timeFilter === 'pm' ? 'active' : ''}`}
-            >
-              <Moon size={13} style={{ display: 'inline', marginRight: '4px' }} />
-              PM
-            </button>
-          </div>
+      {/* 5. AM / PM FILTER TOGGLE (Only in By Hour mode) */}
+      {bookingMode === 'hour' && (
+        <div className="sz-ampm-switch-row">
+          <button
+            onClick={() => setTimePeriod('all')}
+            className={`sz-ampm-tab ${timePeriod === 'all' ? 'active' : ''}`}
+          >
+            All Day
+          </button>
+          <button
+            onClick={() => setTimePeriod('am')}
+            className={`sz-ampm-tab ${timePeriod === 'am' ? 'active' : ''}`}
+          >
+            <Sun size={15} />
+            <span>AM</span>
+          </button>
+          <button
+            onClick={() => setTimePeriod('pm')}
+            className={`sz-ampm-tab ${timePeriod === 'pm' ? 'active' : ''}`}
+          >
+            <Moon size={15} />
+            <span>PM</span>
+          </button>
         </div>
       )}
 
-      {/* 5. MAIN CONTENT */}
-      {bookingMode === 'time' ? (
-        /* --- MODE 1: BY TIME (Vertical Time Slots List) --- */
-        <div className="mobile-time-slots-list">
+      {/* 6. MAIN CONTENT AREA */}
+      {bookingMode === 'hour' ? (
+        /* ============================================================
+           MODE 1: BY HOUR (SportZone signature list with court cards)
+           ============================================================ */
+        <div className="sz-time-slots-wrapper">
           {filteredTimeSlots.length === 0 ? (
-            <div className="mobile-empty-state">
-              No time slots available for this filter.
+            <div className="sz-empty-notice">
+              No slots scheduled for this time filter.
             </div>
           ) : (
             filteredTimeSlots.map((slotObj) => {
-              const isExpanded = expandedTime === slotObj.startTime;
-              const hasAvailable = slotObj.availableCount > 0;
-              const isFull = slotObj.availableCount === 0 && !slotObj.isPast;
+              const isExpanded = expandedHour === slotObj.startTime;
 
               return (
                 <div
                   key={slotObj.startTime}
-                  className={`mobile-slot-card ${isExpanded ? 'expanded' : ''} ${!hasAvailable ? 'disabled' : ''}`}
+                  className={`sz-time-slot-accordion ${isExpanded ? 'is-expanded' : ''}`}
                 >
-                  {/* Slot Main Row */}
+                  {/* Slot Header Row */}
                   <div
-                    onClick={() => handleSlotToggle(slotObj.startTime, slotObj.availableCount)}
-                    className="mobile-slot-row"
+                    onClick={() => handleToggleHour(slotObj.startTime)}
+                    className="sz-time-slot-header"
                   >
-                    {/* Time Label */}
-                    <div className="mobile-slot-time">
-                      <span className="mobile-time-start">{slotObj.formattedStart}</span>
-                      <span className="mobile-time-arrow">→</span>
-                      <span className="mobile-time-end">{slotObj.formattedEnd}</span>
+                    {/* Time Label (e.g. 9:30 PM -> 11:00 PM) */}
+                    <div className="sz-slot-time-display">
+                      <span className="sz-start-time">
+                        {slotObj.start12.time}{' '}
+                        <span className="sz-ampm-tag">{slotObj.start12.ampm}</span>
+                      </span>
+                      <span className="sz-time-separator">→</span>
+                      <span className="sz-end-time">
+                        {slotObj.end12.time}{' '}
+                        <span className="sz-ampm-tag-muted">{slotObj.end12.ampm}</span>
+                      </span>
                     </div>
 
-                    {/* Right Badge: [ 7 ] or [ FULL ] + Arrow */}
-                    <div className="mobile-slot-badge-group">
+                    {/* Right Badge: [ 3 ] Green pill or [ FULL ] */}
+                    <div className="sz-slot-badge-action">
                       {slotObj.isPast ? (
-                        <span className="mobile-badge-past">Past</span>
-                      ) : isFull ? (
-                        <span className="mobile-badge-full">FULL</span>
-                      ) : (
-                        <span className="mobile-badge-count">
+                        <span className="sz-badge-past">Past</span>
+                      ) : slotObj.availableCount > 0 ? (
+                        <span className="sz-badge-count">
                           {slotObj.availableCount}
                         </span>
+                      ) : (
+                        <span className="sz-badge-full">FULL</span>
                       )}
 
-                      {hasAvailable && (
-                        <span className={`mobile-chevron ${isExpanded ? 'open' : ''}`}>
-                          <ChevronRight size={18} />
-                        </span>
-                      )}
+                      <span className={`sz-chevron-indicator ${isExpanded ? 'open' : ''}`}>
+                        {isExpanded ? <ChevronUp size={18} /> : <ChevronRight size={18} />}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Expandable Available Courts for this Time Slot */}
-                  {isExpanded && hasAvailable && (
-                    <div className="mobile-available-courts-box">
-                      <div className="mobile-available-courts-title">
-                        Available Courts ({slotObj.availableCount}):
-                      </div>
-                      <div className="mobile-courts-list">
-                        {slotObj.availableCourts.map(({ court, slot }) => (
-                          <div key={court._id} className="mobile-court-item">
-                            <div className="mobile-court-item-info">
-                              <div className="mobile-court-item-name">{court.name}</div>
-                              <div className="mobile-court-item-sub">
-                                {court.surface} • <span className="mobile-court-item-price">${court.pricePerHour}</span>
+                  {/* Expanded Courts Grid for this Time Slot */}
+                  {isExpanded && (
+                    <div className="sz-expanded-courts-grid">
+                      {slotObj.courtsStatusList.map(
+                        ({ court, slot, isAvailable, isBooked, isPast, isBlocked }) => {
+                          if (isAvailable) {
+                            return (
+                              <button
+                                key={court._id}
+                                onClick={() => selectSlotForBooking(court, slot)}
+                                className="sz-court-btn sz-court-available"
+                              >
+                                <span className="sz-court-btn-title">
+                                  {court.name}
+                                </span>
+                                <span className="sz-court-btn-sub">
+                                  {court.environment || court.surface} • {currencySymbol}{slot.price}
+                                </span>
+                              </button>
+                            );
+                          }
+
+                          // Booked state: Red/pink bordered card with lock
+                          if (isBooked) {
+                            return (
+                              <div
+                                key={court._id}
+                                className="sz-court-btn sz-court-booked"
+                              >
+                                <span className="sz-court-btn-title">
+                                  <Lock size={12} className="sz-lock-icon" />
+                                  {court.name}
+                                </span>
+                                <span className="sz-court-btn-sub">Booked</span>
                               </div>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                selectSlotForBooking(court, slot);
-                              }}
-                              className="btn btn-primary btn-sm mobile-book-btn"
+                            );
+                          }
+
+                          // Blocked / Maintenance state
+                          if (isBlocked) {
+                            return (
+                              <div
+                                key={court._id}
+                                className="sz-court-btn sz-court-blocked"
+                              >
+                                <span className="sz-court-btn-title">
+                                  <Lock size={12} className="sz-lock-icon" />
+                                  {court.name}
+                                </span>
+                                <span className="sz-court-btn-sub">Maintenance</span>
+                              </div>
+                            );
+                          }
+
+                          // Past state
+                          return (
+                            <div
+                              key={court._id}
+                              className="sz-court-btn sz-court-past"
                             >
-                              Book
-                            </button>
-                          </div>
-                        ))}
-                      </div>
+                              <span className="sz-court-btn-title">{court.name}</span>
+                              <span className="sz-court-btn-sub">Past</span>
+                            </div>
+                          );
+                        }
+                      )}
                     </div>
                   )}
                 </div>
@@ -292,59 +453,62 @@ const MobileBookingExperience = ({ availabilityData }) => {
           )}
         </div>
       ) : (
-        /* --- MODE 2: BY COURT --- */
-        <div className="mobile-courts-view-list">
+        /* ============================================================
+           MODE 2: BY COURT (Cards per Court with Slot Chips)
+           ============================================================ */
+        <div className="sz-by-court-list">
           {availabilityData?.courtsAvailability?.map((courtObj) => {
             const { court, slots, availableSlotsCount } = courtObj;
-            const isExpanded = expandedCourtId === court._id;
-
             return (
-              <div key={court._id} className="mobile-slot-card court-card">
-                <div
-                  onClick={() => handleCourtToggle(court._id)}
-                  className="mobile-slot-row"
-                >
+              <div key={court._id} className="sz-court-card-block">
+                <div className="sz-court-card-head">
                   <div>
-                    <div style={{ fontWeight: 700, color: '#fff', fontSize: '1rem' }}>
-                      {court.name}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {court.sportType.toUpperCase()} • ${court.pricePerHour}/hr • {court.surface}
+                    <h3 className="sz-court-name">{court.name}</h3>
+                    <div className="sz-court-details">
+                      {court.surface} • {court.environment} • {currencySymbol}{court.pricePerHour}/hr
                     </div>
                   </div>
-
-                  <div className="mobile-slot-badge-group">
-                    <span className="mobile-badge-count">
-                      {availableSlotsCount} Open
-                    </span>
-                    <span className={`mobile-chevron ${isExpanded ? 'open' : ''}`}>
-                      <ChevronRight size={18} />
-                    </span>
-                  </div>
+                  <span className="sz-court-open-badge">
+                    {availableSlotsCount} Open
+                  </span>
                 </div>
 
-                {isExpanded && (
-                  <div className="mobile-available-courts-box">
-                    <div className="mobile-slots-grid-chips">
-                      {slots.map((slot) => {
-                        const isAvailable = slot.status === 'available';
-                        return (
-                          <button
-                            key={slot.startTime}
-                            disabled={!isAvailable}
-                            onClick={() => isAvailable && selectSlotForBooking(court, slot)}
-                            className={`mobile-slot-chip ${slot.status}`}
-                          >
-                            <span className="chip-time">{format12Hour(slot.startTime)}</span>
-                            <span className="chip-status">
-                              {isAvailable ? `$${slot.price}` : slot.status}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                <div className="sz-court-slots-chips">
+                  {slots.map((slot) => {
+                    const isAvail = slot.status === 'available';
+                    const isBook = slot.status === 'booked';
+                    const slot12 = format12Hour(slot.startTime);
+
+                    if (isAvail) {
+                      return (
+                        <button
+                          key={slot.startTime}
+                          onClick={() => selectSlotForBooking(court, slot)}
+                          className="sz-chip-btn sz-chip-available"
+                        >
+                          <span className="sz-chip-time">{slot12.formatted}</span>
+                          <span className="sz-chip-price">{currencySymbol}{slot.price}</span>
+                        </button>
+                      );
+                    }
+
+                    if (isBook) {
+                      return (
+                        <div key={slot.startTime} className="sz-chip-btn sz-chip-booked">
+                          <span className="sz-chip-time">{slot12.formatted}</span>
+                          <span className="sz-chip-status"><Lock size={10} /> Booked</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={slot.startTime} className="sz-chip-btn sz-chip-past">
+                        <span className="sz-chip-time">{slot12.formatted}</span>
+                        <span className="sz-chip-status">Past</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}

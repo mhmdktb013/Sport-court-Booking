@@ -397,50 +397,144 @@
 }
 
 .mobile-date-strip {
+/* ============================================================
+   SPORTZONE MOBILE EXPERIENCE (Faithful App Replication & Polish)
+   ============================================================ */
+
+.sz-mobile-app-wrapper {
   display: flex;
-  gap: 0.5rem;
-  width: max-content;
+  flex-direction: column;
+  gap: 1.15rem;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
 }
 
-.mobile-date-item {
-  padding: 0.55rem 0.95rem;
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+/* 1. Top Promo Banner */
+.sz-promo-banner {
+  background: linear-gradient(135deg, #0d1a2d 0%, #08111d 100%);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.15rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.sz-promo-banner::after {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.sz-promo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #60a5fa;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+}
+
+.sz-promo-title {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.sz-promo-sub {
+  font-size: 0.8rem;
   color: var(--text-muted);
-  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+/* 2. Sport Radio Pills */
+.sz-sport-pills-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  overflow-x: auto;
+  padding: 0.15rem 0.15rem 0.5rem 0.15rem;
+  scrollbar-width: none;
+}
+.sz-sport-pills-row::-webkit-scrollbar {
+  display: none;
+}
+
+.sz-sport-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 1.15rem;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
 }
 
-.mobile-date-item.active {
-  background: #10b981;
+.sz-sport-radio-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #475569;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.sz-sport-pill.active {
+  background: var(--primary);
+  border-color: var(--primary);
   color: #042f2e;
-  border-color: #10b981;
-  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 14px var(--primary-glow);
 }
 
-/* 4. AM / PM Bar */
-.mobile-ampm-bar {
+.sz-sport-pill.active .sz-sport-radio-dot {
+  border-color: #042f2e;
+  background: #042f2e;
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+/* 3. View Mode & Date Bar */
+.sz-controls-header {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
-.mobile-ampm-toggle {
+.sz-mode-toggle {
   display: inline-flex;
   background: #090e1a;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-full);
-  padding: 2px;
+  border-radius: 10px;
+  padding: 3px;
 }
 
-.mobile-ampm-btn {
-  padding: 0.35rem 1rem;
-  font-size: 0.775rem;
+.sz-mode-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
   font-weight: 700;
-  border-radius: var(--radius-full);
+  border-radius: 8px;
   border: none;
   background: transparent;
   color: var(--text-muted);
@@ -448,19 +542,172 @@
   transition: all 0.2s ease;
 }
 
-.mobile-ampm-btn.active {
-  background: var(--primary);
-  color: #042f2e;
+.sz-mode-btn.active {
+  background: #d97706;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);
 }
 
-/* 5. Vertical Time Slots List */
-.mobile-time-slots-list {
+.sz-date-input-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  position: relative;
+}
+
+.sz-native-date-hidden {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  cursor: pointer;
+}
+
+.sz-date-icon {
+  color: #d97706;
+}
+
+/* 4. Horizontal Calendar Strip */
+.sz-date-strip-container {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #0c121e;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 0.5rem;
+}
+
+.sz-date-arrow-btn {
+  width: 32px;
+  height: 52px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sz-date-arrow-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.sz-date-strip-list {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sz-date-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.2rem;
+  min-height: 52px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.sz-date-box:hover {
+  border-color: var(--border-light);
+  color: #fff;
+}
+
+.sz-date-box.active {
+  background: #d97706;
+  border-color: #d97706;
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);
+}
+
+.sz-date-dayname {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
+.sz-date-daynum {
+  font-size: 0.825rem;
+  font-weight: 800;
+  margin-top: 1px;
+}
+
+/* 5. AM / PM Switch Bar */
+.sz-ampm-switch-row {
+  display: flex;
+  gap: 0.65rem;
+}
+
+.sz-ampm-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.6rem 0.5rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sz-ampm-tab.active {
+  background: #0d1526;
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.15);
+}
+
+/* 6. Vertical Time Slots Accordion List */
+.sz-time-slots-wrapper {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
 }
 
-.mobile-slot-card {
+.sz-empty-notice {
+  padding: 3rem 1rem;
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.sz-time-slot-accordion {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -468,196 +715,311 @@
   transition: all 0.2s ease;
 }
 
-.mobile-slot-card:not(.disabled):hover {
-  border-color: var(--border-light);
+.sz-time-slot-accordion.is-expanded {
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
-.mobile-slot-card.expanded {
-  border-color: rgba(16, 185, 129, 0.5);
-  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
-}
-
-.mobile-slot-card.disabled {
-  opacity: 0.6;
-}
-
-/* Slot Row */
-.mobile-slot-row {
+.sz-time-slot-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.1rem 1.25rem;
+  padding: 1.05rem 1.25rem;
   cursor: pointer;
   user-select: none;
 }
 
-.mobile-slot-time {
+.sz-slot-time-display {
   display: flex;
   align-items: baseline;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
-.mobile-time-start {
-  font-size: 1.2rem;
+.sz-start-time {
+  font-size: 1.15rem;
   font-weight: 800;
   color: #fff;
   letter-spacing: -0.01em;
 }
 
-.mobile-time-arrow {
+.sz-ampm-tag {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #a855f7;
+  text-transform: uppercase;
+}
+
+.sz-ampm-tag-muted {
+  font-size: 0.75rem;
+  font-weight: 700;
   color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.sz-time-separator {
   font-size: 0.85rem;
+  color: var(--text-dim);
 }
 
-.mobile-time-end {
+.sz-end-time {
   font-size: 0.875rem;
-  color: var(--text-muted);
   font-weight: 600;
+  color: var(--text-muted);
 }
 
-.mobile-slot-badge-group {
+.sz-slot-badge-action {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.65rem;
 }
 
-/* Count Badge (e.g. [ 7 ] or [ 1 ]) */
-.mobile-badge-count {
+/* Green count badge */
+.sz-badge-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 38px;
-  height: 34px;
-  padding: 0 0.6rem;
+  min-width: 34px;
+  height: 30px;
+  padding: 0 0.55rem;
   background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  border: 1.5px solid #10b981;
   color: #34d399;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 800;
-  border-radius: var(--radius-md);
+  border-radius: 8px;
 }
 
-.mobile-badge-full {
+.sz-badge-full {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.35rem 0.65rem;
+  padding: 0.25rem 0.6rem;
   background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(239, 68, 68, 0.35);
   color: #f87171;
   font-size: 0.75rem;
   font-weight: 800;
-  border-radius: var(--radius-md);
-  letter-spacing: 0.05em;
+  border-radius: 8px;
 }
 
-.mobile-badge-past {
+.sz-badge-past {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.35rem 0.65rem;
+  padding: 0.25rem 0.6rem;
   background: rgba(30, 41, 59, 0.5);
   border: 1px solid var(--border-color);
   color: #64748b;
   font-size: 0.75rem;
   font-weight: 700;
-  border-radius: var(--radius-md);
+  border-radius: 8px;
 }
 
-.mobile-chevron {
+.sz-chevron-indicator {
   color: var(--text-dim);
   display: flex;
   align-items: center;
   transition: transform 0.2s ease;
 }
 
-.mobile-chevron.open {
-  transform: rotate(90deg);
+.sz-chevron-indicator.open {
   color: var(--primary);
 }
 
-/* Expandable Available Courts Area */
-.mobile-available-courts-box {
-  background: #090e1a;
+/* Expanded Courts List (2x2 grid matching the screenshot) */
+.sz-expanded-courts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.65rem;
+  padding: 0.85rem 1rem 1.15rem 1rem;
+  background: #080d1a;
   border-top: 1px solid var(--border-color);
-  padding: 1rem 1.25rem;
   animation: modalIn 0.2s ease;
 }
 
-.mobile-available-courts-title {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  letter-spacing: 0.05em;
-  margin-bottom: 0.75rem;
+@media (max-width: 380px) {
+  .sz-expanded-courts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-.mobile-courts-list {
+.sz-court-btn {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-}
-
-.mobile-court-item {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  justify-content: center;
+  padding: 0.75rem 0.65rem;
+  border-radius: 12px;
+  border: 1.5px solid transparent;
+  text-align: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  user-select: none;
+  min-height: 56px;
 }
 
-.mobile-court-item-info {
-  display: flex;
-  flex-direction: column;
+/* Available court button: Green border + soft hover */
+.sz-court-available {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: #10b981;
+  color: #34d399;
 }
 
-.mobile-court-item-name {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #fff;
+.sz-court-available:hover {
+  background: var(--primary);
+  color: #042f2e;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px var(--primary-glow);
 }
 
-.mobile-court-item-sub {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+.sz-court-btn-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.sz-court-btn-sub {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.85;
   margin-top: 2px;
 }
 
-.mobile-court-item-price {
-  font-weight: 700;
-  color: var(--primary);
+/* Booked court card: Light red border + Lock icon (matching screenshot) */
+.sz-court-booked {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  cursor: not-allowed;
+  opacity: 0.85;
 }
 
-.mobile-book-btn {
-  padding: 0.4rem 1rem;
-  font-size: 0.8125rem;
-  font-weight: 700;
+.sz-lock-icon {
+  display: inline-block;
+  margin-right: 4px;
+  vertical-align: -1px;
 }
 
-/* Chips view inside By Court mode */
-.mobile-slots-grid-chips {
+.sz-court-blocked {
+  background: rgba(245, 158, 11, 0.05);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+  cursor: not-allowed;
+}
+
+.sz-court-past {
+  background: rgba(30, 41, 59, 0.3);
+  border-color: #1e293b;
+  color: #475569;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Mode 2: By Court Cards */
+.sz-by-court-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sz-court-card-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+
+.sz-court-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.sz-court-name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.sz-court-details {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.sz-court-open-badge {
+  padding: 0.25rem 0.65rem;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid #10b981;
+  color: #34d399;
+  font-size: 0.75rem;
+  font-weight: 800;
+  border-radius: var(--radius-sm);
+}
+
+.sz-court-slots-chips {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.55rem;
 }
 
-.mobile-slot-chip {
+.sz-chip-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.5rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background: var(--bg-surface);
+  justify-content: center;
+  padding: 0.55rem 0.4rem;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.mobile-slot-chip.available {
-  background: rgba(16, 185, 129, 0.12);
+.sz-chip-available {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.sz-chip-available:hover {
+  background: var(--primary);
+  color: #042f2e;
+}
+
+.sz-chip-booked {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  cursor: not-allowed;
+}
+
+.sz-chip-past {
+  background: rgba(30, 41, 59, 0.3);
+  border-color: #1e293b;
+  color: #475569;
+  cursor: not-allowed;
+}
+
+.sz-chip-time {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.sz-chip-price {
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.sz-chip-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 1px;
+}
   border-color: rgba(16, 185, 129, 0.4);
   color: #34d399;
 }
