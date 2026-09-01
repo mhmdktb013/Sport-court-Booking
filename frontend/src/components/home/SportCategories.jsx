@@ -1,49 +1,45 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../../context/BookingContext';
+import { useVenue } from '../../context/VenueContext';
+import { courtService } from '../../services/api';
 
-const categories = [
-  {
-    id: 'football',
-    name: 'Football',
-    count: '2 Pitches (7v7 & 5v5)',
-    icon: '⚽',
-    tag: 'FIFA AstroTurf',
-    color: '#10b981',
-  },
-  {
-    id: 'padel',
-    name: 'Padel',
-    count: '2 Courts (Indoor & Outdoor)',
-    icon: '🎾',
-    tag: 'Panoramic Glass',
-    color: '#3b82f6',
-  },
-  {
-    id: 'tennis',
-    name: 'Tennis',
-    count: '2 Courts (Clay & Hardcourt)',
-    icon: '🎾',
-    tag: 'Championship Surface',
-    color: '#f97316',
-  },
-  {
-    id: 'basketball',
-    name: 'Basketball',
-    count: '1 Main Indoor Arena',
-    icon: '🏀',
-    tag: 'FIBA Hardwood',
-    color: '#a855f7',
-  },
+const defaultCategories = [
+  { id: 'football', name: 'Football', icon: '⚽', color: '#10b981' },
+  { id: 'padel', name: 'Padel', icon: '🎾', color: '#3b82f6' },
+  { id: 'tennis', name: 'Tennis', icon: '🎾', color: '#f97316' },
+  { id: 'basketball', name: 'Basketball', icon: '🏀', color: '#a855f7' },
 ];
 
 const SportCategories = () => {
   const navigate = useNavigate();
   const { setSelectedSport } = useBooking();
+  const { venue } = useVenue();
+  const [courts, setCourts] = useState([]);
+
+  useEffect(() => {
+    const fetchCourts = async () => {
+      try {
+        const res = await courtService.getCourts('all', venue?.venueId);
+        if (res.data.success) {
+          setCourts(res.data.courts);
+        }
+      } catch (err) {
+        console.error('Failed to load courts for categories:', err);
+      }
+    };
+    fetchCourts();
+  }, [venue?.venueId]);
 
   const handleSelectSport = (sportId) => {
     setSelectedSport(sportId);
     navigate(`/booking?sport=${sportId}`);
+  };
+
+  const getSportCountText = (sportId) => {
+    const matchCount = courts.filter((c) => c.sportType === sportId).length;
+    if (matchCount === 0) return 'Available for Booking';
+    return `${matchCount} Court${matchCount > 1 ? 's' : ''} Available`;
   };
 
   return (
@@ -65,7 +61,7 @@ const SportCategories = () => {
         </div>
 
         <div className="grid grid-cols-1 sm-grid-cols-2 lg-grid-cols-4 gap-4">
-          {categories.map((cat) => (
+          {defaultCategories.map((cat) => (
             <div
               key={cat.id}
               onClick={() => handleSelectSport(cat.id)}
@@ -79,35 +75,18 @@ const SportCategories = () => {
                 position: 'relative',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '2.25rem', lineHeight: 1 }}>{cat.icon}</span>
-                <span className="badge badge-gray" style={{ fontSize: '0.7rem' }}>
-                  {cat.tag}
-                </span>
-              </div>
-
-              <div style={{ marginTop: '1.5rem' }}>
+              <div>
+                <div style={{ fontSize: '2.25rem', marginBottom: '0.75rem' }}>{cat.icon}</div>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', marginBottom: '0.25rem' }}>
                   {cat.name}
                 </h3>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  {cat.count}
+                  {getSportCountText(cat.id)}
                 </p>
               </div>
 
-              <div style={{
-                marginTop: '1rem',
-                paddingTop: '0.75rem',
-                borderTop: '1px solid var(--border-color)',
-                fontSize: '0.8125rem',
-                fontWeight: 600,
-                color: 'var(--primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-                <span>Check Slots</span>
-                <span>→</span>
+              <div style={{ marginTop: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--primary)', fontSize: '0.8125rem', fontWeight: 600 }}>
+                Book Slot →
               </div>
             </div>
           ))}
