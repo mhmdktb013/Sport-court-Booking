@@ -62,6 +62,17 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
+// Root Route
+app.get('/', (req, res) => {
+  res.json({
+    name: 'SportsZone Booking Platform API',
+    status: 'running',
+    health: '/api/health',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Health Check
 app.get('/api/health', (req, res) => {
   res.json({
