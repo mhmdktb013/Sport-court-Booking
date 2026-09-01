@@ -7,15 +7,15 @@ import {
   updateCourt,
   deleteCourt,
 } from '../controllers/courtController.js';
-import { protect, adminOnly } from '../middleware/authMiddleware.js';
+import { protect, optionalProtect, adminOnly } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.route('/').get(getCourts).post(protect, adminOnly, createCourt);
-router.route('/featured').get(getFeaturedCourts);
+router.route('/').get(optionalProtect, getCourts).post(protect, adminOnly, createCourt);
+router.route('/featured').get(optionalProtect, getFeaturedCourts);
 router
   .route('/:id')
-  .get(getCourtById)
+  .get(optionalProtect, getCourtById)
   .put(protect, adminOnly, updateCourt)
   .delete(protect, adminOnly, deleteCourt);
 

@@ -22,6 +22,20 @@ export const protect = async (req, res, next) => {
   }
 };
 
+// Optional auth: attaches req.user if valid token provided, but doesn't block if not
+export const optionalProtect = async (req, res, next) => {
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    try {
+      const token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+      req.user = await User.findById(decoded.id).select('-password');
+    } catch (error) {
+      // Ignore invalid token on public/optional routes
+    }
+  }
+  next();
+};
+
 export const adminOnly = (req, res, next) => {
   if (req.user && (req.user.role === 'admin' || req.user.role === 'manager')) {
     next();

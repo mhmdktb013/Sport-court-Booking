@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/api';
+import { useVenue } from '../../context/VenueContext';
 import { DollarSign, Calendar, Trophy, Users, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 
 const AdminOverview = ({ onNavigateTab }) => {
+  const { venue } = useVenue();
+  const currencySymbol = venue?.currencySymbol || '$';
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -34,13 +37,13 @@ const AdminOverview = ({ onNavigateTab }) => {
   const statCards = [
     {
       label: "Today's Revenue",
-      value: `$${metrics.todayRevenue}`,
+      value: `${currencySymbol}${metrics.todayRevenue}`,
       icon: <DollarSign size={22} color="#10b981" />,
       sub: `${metrics.todayBookingsCount} matches today`,
     },
     {
       label: "Total Gross Revenue",
-      value: `$${metrics.totalRevenue}`,
+      value: `${currencySymbol}${metrics.totalRevenue}`,
       icon: <DollarSign size={22} color="#3b82f6" />,
       sub: 'All-time confirmed matches',
     },
@@ -135,7 +138,7 @@ const AdminOverview = ({ onNavigateTab }) => {
                       {b.date} • {b.startTime}
                     </td>
                     <td style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#fff' }}>
-                      ${b.price}
+                      {currencySymbol}{b.price}
                     </td>
                     <td style={{ padding: '0.75rem 0.5rem' }}>
                       <span className={`badge ${b.status === 'confirmed' ? 'badge-green' : b.status === 'cancelled' ? 'badge-red' : 'badge-blue'}`}>

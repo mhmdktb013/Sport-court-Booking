@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { courtService, adminService } from '../../services/api';
+import { useVenue } from '../../context/VenueContext';
+import { useAuth } from '../../context/AuthContext';
 import { Plus, Edit2, Trash2, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
 import AdminCourtModal from './AdminCourtModal';
 
 const AdminCourtsManager = () => {
+  const { venue } = useVenue();
+  const { user } = useAuth();
+  const currencySymbol = venue?.currencySymbol || '$';
+
   const [courts, setCourts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourt, setEditingCourt] = useState(null);
 
+  const activeVenueId = user?.venueId || venue?.venueId;
+
   const fetchCourts = async () => {
     setLoading(true);
     try {
-      const res = await courtService.getCourts('all');
+      const res = await courtService.getCourts('all', activeVenueId);
       if (res.data.success) {
         setCourts(res.data.courts);
       }
@@ -25,7 +33,7 @@ const AdminCourtsManager = () => {
 
   useEffect(() => {
     fetchCourts();
-  }, []);
+  }, [activeVenueId]);
 
   const handleAddNew = () => {
     setEditingCourt(null);
@@ -113,7 +121,7 @@ const AdminCourtsManager = () => {
                   fontWeight: 700,
                   color: 'var(--primary)',
                 }}>
-                  ${court.pricePerHour}/hr
+                  {currencySymbol}{court.pricePerHour}/hr
                 </div>
               </div>
 

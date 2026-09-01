@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { adminService, bookingService } from '../../services/api';
+import { useVenue } from '../../context/VenueContext';
 import { Search, Phone, Calendar, Filter, XCircle, CheckCircle, RefreshCw } from 'lucide-react';
 
 const AdminBookingsManager = () => {
+  const { venue } = useVenue();
+  const currencySymbol = venue?.currencySymbol || '$';
   const [bookings, setBookings] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -198,7 +201,7 @@ const AdminBookingsManager = () => {
                     <div style={{ fontWeight: 600, color: '#fff' }}>{b.startTime} - {b.endTime}</div>
                   </td>
                   <td style={{ padding: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>
-                    ${b.price}
+                    {currencySymbol}{b.price}
                   </td>
                   <td style={{ padding: '0.75rem' }}>
                     <span className={`badge ${getStatusBadge(b.status)}`}>

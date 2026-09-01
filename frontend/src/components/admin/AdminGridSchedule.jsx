@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { adminService, bookingService } from '../../services/api';
+import { useVenue } from '../../context/VenueContext';
 import { Calendar, Lock, AlertCircle, Plus, User, Phone, CheckCircle, XCircle } from 'lucide-react';
 import Modal from '../common/Modal';
 
 const AdminGridSchedule = () => {
+  const { venue } = useVenue();
+  const currencySymbol = venue?.currencySymbol || '$';
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [selectedSport, setSelectedSport] = useState('all');
@@ -196,7 +199,7 @@ const AdminGridSchedule = () => {
                       {c.court.name}
                     </div>
                     <span className="badge badge-gray" style={{ fontSize: '0.65rem', marginTop: '3px' }}>
-                      {c.court.sportType} • ${c.court.pricePerHour}/h
+                      {c.court.sportType} • {currencySymbol}{c.court.pricePerHour}/h
                     </span>
                   </th>
                 ))}
