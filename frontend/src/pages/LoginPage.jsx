@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { Shield, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('admin@sportszone.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -99,22 +99,11 @@ const LoginPage = () => {
               />
             </div>
 
-            <div style={{
-              background: '#0a0f1d',
-              padding: '0.75rem',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.75rem',
-              color: 'var(--text-dim)',
-              marginBottom: '1.25rem',
-            }}>
-              💡 Pre-filled demo credentials: <strong>admin@sportszone.com</strong> / <strong>admin123</strong>
-            </div>
-
             <button
               type="submit"
               disabled={submitting}
               className="btn btn-primary"
-              style={{ width: '100%' }}
+              style={{ width: '100%', marginTop: '0.5rem' }}
             >
               {submitting ? 'Authenticating...' : (
                 <>
