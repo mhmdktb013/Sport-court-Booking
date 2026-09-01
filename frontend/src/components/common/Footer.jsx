@@ -6,12 +6,12 @@ import { useVenue } from '../../context/VenueContext';
 const Footer = () => {
   const { venue } = useVenue();
 
-  const brandName = venue?.name || 'SPORTSZONE';
-  const address = venue?.address ? `${venue.address}${venue.city ? `, ${venue.city}` : ''}` : 'SportsZone Complex, Arena Boulevard';
-  const phone = venue?.phone || venue?.whatsappNumber || '+1 (555) 890-COURT';
+  const brandName = venue?.name || '';
+  const address = venue?.address ? `${venue.address}${venue.city ? `, ${venue.city}` : ''}` : '';
+  const phone = venue?.phone || venue?.whatsappNumber || '';
   const hours = venue?.openingHour && venue?.closingHour
     ? `Open Daily: ${venue.openingHour} – ${venue.closingHour}`
-    : 'Open Daily: 08:00 AM – 12:00 Midnight';
+    : '';
 
   return (
     <footer style={{
@@ -55,7 +55,7 @@ const Footer = () => {
               </span>
             </div>
             <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-              The modern standard in sports venue management and instant court bookings. Football, Padel, Tennis, and Basketball under one roof.
+              {venue?.name ? `The official online court reservation platform for ${venue.name}. Book and play instantly.` : 'The modern standard in sports venue management and instant court bookings.'}
             </p>
           </div>
 
@@ -91,18 +91,24 @@ const Footer = () => {
               Facility Details
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              <div className="flex items-center gap-2">
-                <MapPin size={16} color="var(--primary)" />
-                <span>{address}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock size={16} color="var(--primary)" />
-                <span>{hours}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone size={16} color="var(--primary)" />
-                <span>{phone}</span>
-              </div>
+              {address && (
+                <div className="flex items-center gap-2">
+                  <MapPin size={16} color="var(--primary)" />
+                  <span>{address}</span>
+                </div>
+              )}
+              {hours && (
+                <div className="flex items-center gap-2">
+                  <Clock size={16} color="var(--primary)" />
+                  <span>{hours}</span>
+                </div>
+              )}
+              {phone && (
+                <div className="flex items-center gap-2">
+                  <Phone size={16} color="var(--primary)" />
+                  <span>{phone}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -119,7 +125,7 @@ const Footer = () => {
           color: 'var(--text-dim)',
           gap: '1rem',
         }}>
-          <div>© {new Date().getFullYear()} {brandName}. All rights reserved.</div>
+          <div>© {new Date().getFullYear()} {brandName || 'Arena Bookings'}. All rights reserved.</div>
           <div>Instant Availability • Zero Double Booking • Real-Time Engine</div>
         </div>
       </div>

@@ -12,8 +12,8 @@ const Navbar = () => {
 
   const isActive = (path) => location.pathname === path;
 
-  const brandName = venue?.name || 'SPORTSZONE';
-  const subtitle = venue?.city ? `${venue.city} Arena & Court Booking` : 'Premier Arena Booking';
+  const brandName = venue?.name || '';
+  const subtitle = venue?.city ? `${venue.city} Arena & Court Booking` : (venue?.name ? `${venue.name} Court Booking` : '');
 
   return (
     <header style={{
@@ -55,12 +55,14 @@ const Navbar = () => {
             </div>
           )}
           <div>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
-              {brandName}
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff', minHeight: '1.25rem', display: 'inline-block' }}>
+              {brandName || ' '}
             </span>
-            <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '-2px' }}>
-              {subtitle}
-            </span>
+            {subtitle && (
+              <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '-2px' }}>
+                {subtitle}
+              </span>
+            )}
           </div>
         </Link>
 

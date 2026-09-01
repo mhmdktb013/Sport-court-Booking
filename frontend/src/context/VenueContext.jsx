@@ -11,21 +11,58 @@ export const useVenue = () => {
   return context;
 };
 
+// Helper to get cached venue from localStorage to avoid initial flicker
+const getCachedVenue = () => {
+  try {
+    const cached = localStorage.getItem('active_venue_cache');
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch (e) {
+    // ignore
+  }
+  return null;
+};
+
 export const VenueProvider = ({ children }) => {
-  const [venue, setVenue] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [venue, setVenue] = useState(getCachedVenue);
+  const [loading, setLoading] = useState(!venue);
   const [error, setError] = useState(null);
+
+  // Apply theme immediately if cached venue exists
+  useEffect(() => {
+    const current = venue || getCachedVenue();
+    if (current) {
+      const root = document.documentElement;
+      if (current.primaryColor) {
+        root.style.setProperty('--primary', current.primaryColor);
+        root.style.setProperty('--primary-glow', `${current.primaryColor}4d`);
+      }
+      if (current.secondaryColor) {
+        root.style.setProperty('--secondary', current.secondaryColor);
+      }
+      if (current.accentColor) {
+        root.style.setProperty('--accent', current.accentColor);
+      }
+      if (current.name) {
+        document.title = `${current.name} — Court Bookings`;
+      }
+    }
+  }, [venue]);
 
   // Fetch venue settings from API (Admin settings if authenticated, otherwise resolved venue by host/slug)
   const fetchVenueSettings = async () => {
     try {
-      setLoading(true);
+      setLoading(!venue);
       const token = localStorage.getItem('sportszone_token');
       if (token) {
         try {
           const response = await venueService.getVenueSettings();
           if (response.data.venue) {
             setVenue(response.data.venue);
+            try {
+              localStorage.setItem('active_venue_cache', JSON.stringify(response.data.venue));
+            } catch (e) {}
             setError(null);
             return;
           }
@@ -46,7 +83,12 @@ export const VenueProvider = ({ children }) => {
       if (host && host !== 'localhost' && host !== '127.0.0.1') resolveParams.host = host;
 
       const response = await venueService.resolveVenue(resolveParams);
-      setVenue(response.data.venue);
+      if (response.data.venue) {
+        setVenue(response.data.venue);
+        try {
+          localStorage.setItem('active_venue_cache', JSON.stringify(response.data.venue));
+        } catch (e) {}
+      }
       setError(null);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load venue settings');
@@ -62,6 +104,9 @@ export const VenueProvider = ({ children }) => {
       setLoading(true);
       const response = await venueService.updateVenueSettings(updates);
       setVenue(response.data.venue);
+      try {
+        localStorage.setItem('active_venue_cache', JSON.stringify(response.data.venue));
+      } catch (e) {}
       setError(null);
       return response.data.venue;
     } catch (err) {
@@ -78,26 +123,6 @@ export const VenueProvider = ({ children }) => {
   useEffect(() => {
     fetchVenueSettings();
   }, []);
-
-  // Apply theme colors and document title dynamically
-  useEffect(() => {
-    if (venue) {
-      const root = document.documentElement;
-      if (venue.primaryColor) {
-        root.style.setProperty('--primary', venue.primaryColor);
-        root.style.setProperty('--primary-glow', `${venue.primaryColor}4d`);
-      }
-      if (venue.secondaryColor) {
-        root.style.setProperty('--secondary', venue.secondaryColor);
-      }
-      if (venue.accentColor) {
-        root.style.setProperty('--accent', venue.accentColor);
-      }
-      if (venue.name) {
-        document.title = `${venue.name} — Sports Arena & Court Bookings`;
-      }
-    }
-  }, [venue]);
 
   const value = {
     venue,
