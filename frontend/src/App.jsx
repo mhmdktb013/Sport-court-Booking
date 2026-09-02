@@ -7,8 +7,34 @@ import BookingPage from './pages/BookingPage';
 import BookingLookupPage from './pages/BookingLookupPage';
 import LoginPage from './pages/LoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import { useVenue } from './context/VenueContext';
 
 function App() {
+  const { venue, resolved } = useVenue();
+
+  // Hold the shell until the tenant is known so no other venue's branding can flash
+  if (!venue && !resolved) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#090e1a',
+      }}>
+        <div style={{
+          width: '38px',
+          height: '38px',
+          border: '3px solid rgba(255, 255, 255, 0.12)',
+          borderTopColor: 'var(--primary)',
+          borderRadius: '50%',
+          animation: 'venueBootSpin 0.8s linear infinite',
+        }} />
+        <style>{`@keyframes venueBootSpin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navbar />

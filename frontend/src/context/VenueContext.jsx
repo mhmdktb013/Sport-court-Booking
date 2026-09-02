@@ -11,35 +11,45 @@ export const useVenue = () => {
   return context;
 };
 
-// Helper to get cached venue from localStorage ONLY if it matches the current URL slug or default
+const DEFAULT_VENUE_SLUG = 'chocair-arena';
+// Versioned key so any legacy cached tenant from previous builds is discarded
+const VENUE_CACHE_KEY = 'venue_cache_v2';
+
+const readUrlSlug = () => {
+  const params = new URLSearchParams(window.location.search);
+  return (params.get('venue') || params.get('v') || params.get('slug') || '').toLowerCase().trim();
+};
+
+// Cache is only trusted when it matches the venue the URL asks for
 const getCachedVenue = () => {
   try {
-    const params = new URLSearchParams(window.location.search);
-    const slugParam = (params.get('venue') || params.get('v') || params.get('slug') || '').toLowerCase().trim();
-    const cached = localStorage.getItem('active_venue_cache');
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      // If URL has explicit slug, only use cache if it matches that slug
-      if (slugParam) {
-        if (parsed.slug === slugParam || parsed.subdomain === slugParam) {
-          return parsed;
-        }
-        return null;
-      }
-      // If no slug param in URL, only use cache if it's the default (chocair-arena)
-      if (parsed.slug === 'chocair-arena') {
-        return parsed;
-      }
+    localStorage.removeItem('active_venue_cache');
+    const slugParam = readUrlSlug();
+    const cached = localStorage.getItem(VENUE_CACHE_KEY);
+    if (!cached) return null;
+
+    const parsed = JSON.parse(cached);
+    if (slugParam) {
+      return parsed.slug === slugParam || parsed.subdomain === slugParam ? parsed : null;
     }
+    return parsed.slug === DEFAULT_VENUE_SLUG ? parsed : null;
   } catch (e) {
-    // ignore
+    return null;
   }
-  return null;
+};
+
+const cacheVenue = (data) => {
+  try {
+    localStorage.setItem(VENUE_CACHE_KEY, JSON.stringify(data));
+  } catch (e) {
+    // storage unavailable, ignore
+  }
 };
 
 export const VenueProvider = ({ children }) => {
   const [venue, setVenue] = useState(getCachedVenue);
   const [loading, setLoading] = useState(!venue);
+  const [resolved, setResolved] = useState(false);
   const [error, setError] = useState(null);
 
   // Apply theme colors and document title dynamically
@@ -83,9 +93,7 @@ export const VenueProvider = ({ children }) => {
           const response = await venueService.getVenueSettings();
           if (response.data.venue) {
             setVenue(response.data.venue);
-            try {
-              localStorage.setItem('active_venue_cache', JSON.stringify(response.data.venue));
-            } catch (e) {}
+            cacheVenue(response.data.venue);
             setError(null);
             return;
           }
@@ -103,15 +111,14 @@ export const VenueProvider = ({ children }) => {
       const response = await venueService.resolveVenue(resolveParams);
       if (response.data.venue) {
         setVenue(response.data.venue);
-        try {
-          localStorage.setItem('active_venue_cache', JSON.stringify(response.data.venue));
-        } catch (e) {}
+        cacheVenue(response.data.venue);
       }
       setError(null);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load venue settings');
       console.error('Venue fetch error:', err);
     } finally {
+      setResolved(true);
       setLoading(false);
     }
   }, []);
@@ -122,9 +129,7 @@ export const VenueProvider = ({ children }) => {
       setLoading(true);
       const response = await venueService.updateVenueSettings(updates);
       setVenue(response.data.venue);
-      try {
-        localStorage.setItem('active_venue_cache', JSON.stringify(response.data.venue));
-      } catch (e) {}
+      cacheVenue(response.data.venue);
       setError(null);
       return response.data.venue;
     } catch (err) {
@@ -154,6 +159,7 @@ export const VenueProvider = ({ children }) => {
   const value = {
     venue,
     loading,
+    resolved,
     error,
     fetchVenueSettings,
     updateVenue,
