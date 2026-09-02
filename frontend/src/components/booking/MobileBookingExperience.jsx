@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useBooking } from '../../context/BookingContext';
 import { useVenue } from '../../context/VenueContext';
+import { courtService } from '../../services/api';
 import {
   ChevronLeft,
   ChevronRight,
@@ -10,8 +11,6 @@ import {
   Sun,
   Moon,
   Lock,
-  Sparkles,
-  Share2,
 } from 'lucide-react';
 
 // 12-hour format helper
@@ -28,6 +27,13 @@ function format12Hour(timeStr) {
     formatted: `${h}:${mStr} ${ampm}`,
   };
 }
+
+const SPORT_META = [
+  { id: 'football', label: 'Football', icon: '⚽' },
+  { id: 'padel', label: 'Padel', icon: '🎾' },
+  { id: 'tennis', label: 'Tennis', icon: '🎾' },
+  { id: 'basketball', label: 'Basketball', icon: '🏀' },
+];
 
 const MobileBookingExperience = ({ availabilityData }) => {
   const {
@@ -46,31 +52,45 @@ const MobileBookingExperience = ({ availabilityData }) => {
   const [timePeriod, setTimePeriod] = useState('all'); // 'all' | 'am' | 'pm'
   const [expandedHour, setExpandedHour] = useState(null); // startTime of expanded slot
   const [dateStartIndex, setDateStartIndex] = useState(0);
+  const [visibleDateCount, setVisibleDateCount] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < 420 ? 5 : 7
+  );
 
-  // Extract sports actually present in the courts
-  const sportsList = useMemo(() => {
-    const defaultSports = [
-      { id: 'football', label: 'Football', icon: '⚽' },
-      { id: 'padel', label: 'Padel', icon: '🎾' },
-      { id: 'tennis', label: 'Tennis', icon: '🎾' },
-      { id: 'basketball', label: 'Basketball', icon: '🏀' },
-    ];
-
-    if (!availabilityData?.courtsAvailability?.length) {
-      return defaultSports;
-    }
-
-    const detected = new Set(
-      availabilityData.courtsAvailability.map((c) => c.court.sportType)
-    );
-
-    const list = defaultSports.filter((s) => detected.has(s.id));
-    return list.length > 0 ? list : defaultSports;
-  }, [availabilityData]);
-
-  // Set initial selected sport if current is 'all'
   React.useEffect(() => {
-    if (selectedSport === 'all' && sportsList.length > 0) {
+    const onResize = () => setVisibleDateCount(window.innerWidth < 420 ? 5 : 7);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Sports the venue actually offers. Read from the court list rather than the
+  // availability response, which is already narrowed by the active sport filter.
+  const [venueSports, setVenueSports] = useState([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    courtService
+      .getCourts('all', venue?.venueId)
+      .then((res) => {
+        if (cancelled || !res.data.success) return;
+        setVenueSports([...new Set(res.data.courts.map((c) => c.sportType))]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [venue?.venueId]);
+
+  const sportsList = useMemo(() => {
+    if (venueSports.length === 0) return SPORT_META;
+    const list = SPORT_META.filter((s) => venueSports.includes(s.id));
+    return list.length > 0 ? list : SPORT_META;
+  }, [venueSports]);
+
+  // This component stays mounted at desktop widths, so only claim the shared
+  // sport filter while the mobile layout is the one on screen.
+  React.useEffect(() => {
+    const isMobileView = window.matchMedia('(max-width: 768px)').matches;
+    if (isMobileView && selectedSport === 'all' && sportsList.length > 0) {
       setSelectedSport(sportsList[0].id);
     }
   }, [selectedSport, sportsList, setSelectedSport]);
@@ -99,17 +119,19 @@ const MobileBookingExperience = ({ availabilityData }) => {
     return pills;
   }, []);
 
-  // Visible slice of date pills (7 visible at a time with prev/next arrows)
+  // Visible slice of date pills, paged with the prev/next arrows
   const visibleDatePills = useMemo(() => {
-    return allDatePills.slice(dateStartIndex, dateStartIndex + 7);
-  }, [allDatePills, dateStartIndex]);
+    return allDatePills.slice(dateStartIndex, dateStartIndex + visibleDateCount);
+  }, [allDatePills, dateStartIndex, visibleDateCount]);
+
+  const maxDateStartIndex = allDatePills.length - visibleDateCount;
 
   const handlePrevDates = () => {
     setDateStartIndex((prev) => Math.max(0, prev - 4));
   };
 
   const handleNextDates = () => {
-    setDateStartIndex((prev) => Math.min(allDatePills.length - 7, prev + 4));
+    setDateStartIndex((prev) => Math.min(maxDateStartIndex, prev + 4));
   };
 
   // Aggregate time slots across all courts for this sport & date
@@ -195,21 +217,7 @@ const MobileBookingExperience = ({ availabilityData }) => {
 
   return (
     <div className="sz-mobile-app-wrapper">
-      {/* 1. TOP PROMO / SHARE HERO BANNER */}
-      <div className="sz-promo-banner">
-        <div className="sz-promo-badge">
-          <Share2 size={13} />
-          <span>INSTANT MATCH LINK</span>
-        </div>
-        <div className="sz-promo-title">
-          SHARE THE BOOKING LINK WITH YOUR FRIENDS
-        </div>
-        <div className="sz-promo-sub">
-          Lock in your match time, split the court fee, and get instant verified booking.
-        </div>
-      </div>
-
-      {/* 2. SPORT RADIO PILLS */}
+      {/* 1. SPORT RADIO PILLS */}
       <div className="sz-sport-pills-row">
         {sportsList.map((sport) => {
           const isActive = selectedSport === sport.id;
@@ -227,7 +235,7 @@ const MobileBookingExperience = ({ availabilityData }) => {
         })}
       </div>
 
-      {/* 3. VIEW MODE & DATE PICKER HEADER */}
+      {/* 2. VIEW MODE & DATE PICKER HEADER */}
       <div className="sz-controls-header">
         {/* Toggle [ By Hour ] [ By Court ] */}
         <div className="sz-mode-toggle">
@@ -258,7 +266,7 @@ const MobileBookingExperience = ({ availabilityData }) => {
         </label>
       </div>
 
-      {/* 4. HORIZONTAL CALENDAR STRIP */}
+      {/* 3. HORIZONTAL CALENDAR STRIP */}
       <div className="sz-date-strip-container">
         <button
           onClick={handlePrevDates}
@@ -290,7 +298,7 @@ const MobileBookingExperience = ({ availabilityData }) => {
 
         <button
           onClick={handleNextDates}
-          disabled={dateStartIndex >= allDatePills.length - 7}
+          disabled={dateStartIndex >= maxDateStartIndex}
           className="sz-date-arrow-btn"
           aria-label="Next dates"
         >
@@ -298,7 +306,7 @@ const MobileBookingExperience = ({ availabilityData }) => {
         </button>
       </div>
 
-      {/* 5. AM / PM FILTER TOGGLE (Only in By Hour mode) */}
+      {/* 4. AM / PM FILTER TOGGLE (Only in By Hour mode) */}
       {bookingMode === 'hour' && (
         <div className="sz-ampm-switch-row">
           <button
@@ -324,7 +332,7 @@ const MobileBookingExperience = ({ availabilityData }) => {
         </div>
       )}
 
-      {/* 6. MAIN CONTENT AREA */}
+      {/* 5. MAIN CONTENT AREA */}
       {bookingMode === 'hour' ? (
         /* ============================================================
            MODE 1: BY HOUR (SportZone signature list with court cards)
@@ -350,14 +358,27 @@ const MobileBookingExperience = ({ availabilityData }) => {
                   >
                     {/* Time Label (e.g. 9:30 PM -> 11:00 PM) */}
                     <div className="sz-slot-time-display">
-                      <span className="sz-start-time">
-                        {slotObj.start12.time}{' '}
-                        <span className="sz-ampm-tag">{slotObj.start12.ampm}</span>
-                      </span>
-                      <span className="sz-time-separator">→</span>
-                      <span className="sz-end-time">
-                        {slotObj.end12.time}{' '}
-                        <span className="sz-ampm-tag-muted">{slotObj.end12.ampm}</span>
+                      <div className="sz-slot-time-row">
+                        <span className="sz-start-time">
+                          {slotObj.start12.time}{' '}
+                          <span className="sz-ampm-tag">{slotObj.start12.ampm}</span>
+                        </span>
+                        <span className="sz-time-separator">→</span>
+                        <span className="sz-end-time">
+                          {slotObj.end12.time}{' '}
+                          <span className="sz-ampm-tag-muted">{slotObj.end12.ampm}</span>
+                        </span>
+                      </div>
+                      <span
+                        className={`sz-slot-availability-label ${
+                          slotObj.isPast ? '' : slotObj.availableCount > 0 ? 'is-open' : 'is-full'
+                        }`}
+                      >
+                        {slotObj.isPast
+                          ? 'Unavailable'
+                          : slotObj.availableCount > 0
+                          ? `${slotObj.availableCount} court${slotObj.availableCount > 1 ? 's' : ''} available`
+                          : 'Fully booked'}
                       </span>
                     </div>
 

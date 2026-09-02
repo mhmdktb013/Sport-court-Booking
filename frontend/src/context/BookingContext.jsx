@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { availabilityService } from '../services/api';
 import { useVenue } from './VenueContext';
 
@@ -21,19 +21,27 @@ export const BookingProvider = ({ children }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
 
+  // Venue/sport can change while a request is in flight; only the newest wins
+  const requestIdRef = useRef(0);
+
   const fetchAvailability = useCallback(async (date = selectedDate, sport = selectedSport, vId = venue?.venueId) => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await availabilityService.getAvailability(date, sport, vId);
+      if (requestId !== requestIdRef.current) return;
       if (res.data.success) {
         setAvailability(res.data);
       }
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       console.error('Error fetching availability:', err);
       setError(err.response?.data?.message || 'Failed to fetch court availability');
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [selectedDate, selectedSport, venue?.venueId]);
 

@@ -9,7 +9,7 @@ import MobileBookingExperience from '../components/booking/MobileBookingExperien
 import BookingModal from '../components/booking/BookingModal';
 import BookingSuccessModal from '../components/booking/BookingSuccessModal';
 import { useBooking } from '../context/BookingContext';
-import { Sparkles, Info, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 const BookingPage = () => {
   const {
@@ -32,121 +32,51 @@ const BookingPage = () => {
   }, [searchParams, setSelectedSport]);
 
   return (
-    <div style={{ padding: '2rem 0 5rem 0' }}>
-      <div className="container">
-        {/* Error Alert */}
-        {error && (
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            color: '#f87171',
-            padding: '1rem',
-            borderRadius: 'var(--radius-md)',
-            marginBottom: '1.5rem',
-          }}>
-            {error}
+    <div className="bk-page">
+      <div className="container bk-container">
+        <div className="bk-page-head">
+          <div>
+            <h1 className="bk-title">Book a Court</h1>
+            <p className="bk-subtitle">Pick a date, sport, and open slot.</p>
           </div>
-        )}
 
-        {/* Global Loading Indicator */}
+          <div className="bk-head-actions">
+            <ViewToggle />
+            <button
+              onClick={() => fetchAvailability()}
+              className="btn btn-secondary btn-sm bk-refresh-btn"
+              title="Refresh availability"
+              aria-label="Refresh availability"
+            >
+              <RefreshCw size={15} />
+            </button>
+          </div>
+        </div>
+
+        {error && <div className="bk-error">{error}</div>}
+
         {loading ? (
-          <div style={{
-            padding: '5rem 0',
-            textAlign: 'center',
-            background: 'var(--bg-card)',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border-color)',
-            margin: '1.5rem 0',
-          }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              border: '3px solid var(--border-color)',
-              borderTopColor: 'var(--primary)',
-              borderRadius: '50%',
-              animation: 'spin 0.8s linear infinite',
-              margin: '0 auto 1rem auto',
-            }}>
-              <style>{`
-                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-              `}</style>
-            </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-              Fetching live court availability...
-            </p>
+          <div className="bk-loading">
+            <div className="bk-spinner" />
+            <p>Loading availability…</p>
           </div>
         ) : (
           <>
-            {/* =======================================================
-                1. MOBILE BOOKING EXPERIENCE (Max Width 768px)
-                Clean vertical time-slots list with [ 7 ] / [ FULL ] badges
-                and expandable court drawer.
-               ======================================================= */}
             <div className="mobile-only-booking-view">
               <MobileBookingExperience availabilityData={availability} />
             </div>
 
-            {/* =======================================================
-                2. DESKTOP BOOKING EXPERIENCE (Min Width 769px)
-                Traditional full court-by-time grid matrix & controls.
-               ======================================================= */}
             <div className="desktop-only-booking-view">
-              {/* Page Top Header */}
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                justifyContent: 'space-between',
-                alignItems: 'flex-end',
-                marginBottom: '2rem',
-                gap: '1rem',
-              }}>
-                <div>
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.4rem',
-                    color: 'var(--primary)',
-                    fontSize: '0.8125rem',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    marginBottom: '0.35rem',
-                  }}>
-                    <Sparkles size={14} /> Live Availability & Match Booking
-                  </div>
-                  <h1 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
-                    Find Your Court
-                  </h1>
-                  <p style={{ fontSize: '0.9375rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    Select a date, pick your preferred sport, and choose an open slot to book instantly.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <ViewToggle />
-                  <button
-                    onClick={() => fetchAvailability()}
-                    className="btn btn-secondary btn-sm"
-                    title="Refresh Availability"
-                  >
-                    <RefreshCw size={15} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Date Selector Bar (14 Days) */}
-              <DateBar />
-
-              {/* Sport Filter Tabs */}
-              <div style={{ marginBottom: '1.5rem' }}>
+              <section className="bk-controls-panel">
+                <DateBar />
+                <div className="bk-controls-divider" />
                 <SportFilter />
-              </div>
+              </section>
 
-              {/* Availability Legend */}
               <div className="availability-legend">
                 <div className="legend-item">
                   <span className="legend-indicator available"></span>
-                  <span>Available (Click to Book)</span>
+                  <span>Available</span>
                 </div>
                 <div className="legend-item">
                   <span className="legend-indicator booked"></span>
@@ -154,27 +84,23 @@ const BookingPage = () => {
                 </div>
                 <div className="legend-item">
                   <span className="legend-indicator blocked"></span>
-                  <span>Maintenance / Reserved</span>
+                  <span>Maintenance</span>
                 </div>
                 <div className="legend-item">
                   <span className="legend-indicator past"></span>
-                  <span>Past Time Slot</span>
+                  <span>Past</span>
                 </div>
               </div>
 
-              {/* Desktop Grid or List View */}
-              <div>
-                {viewMode === 'grid' ? (
-                  <CourtGridMatrix availabilityData={availability} />
-                ) : (
-                  <CourtCardList availabilityData={availability} />
-                )}
-              </div>
+              {viewMode === 'grid' ? (
+                <CourtGridMatrix availabilityData={availability} />
+              ) : (
+                <CourtCardList availabilityData={availability} />
+              )}
             </div>
           </>
         )}
 
-        {/* Step 4 & Confirmation Modals */}
         <BookingModal />
         <BookingSuccessModal />
       </div>

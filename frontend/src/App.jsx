@@ -1,7 +1,8 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
+import MinimalFooter from './components/common/MinimalFooter';
 import HomePage from './pages/HomePage';
 import BookingPage from './pages/BookingPage';
 import BookingLookupPage from './pages/BookingLookupPage';
@@ -11,6 +12,10 @@ import { useVenue } from './context/VenueContext';
 
 function App() {
   const { venue, resolved } = useVenue();
+  const location = useLocation();
+
+  // Booking is a focused flow, so it gets a stripped-down footer
+  const isBookingFlow = location.pathname.startsWith('/booking');
 
   // Hold the shell until the tenant is known so no other venue's branding can flash
   if (!venue && !resolved) {
@@ -48,7 +53,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-      <Footer />
+      {isBookingFlow ? <MinimalFooter /> : <Footer />}
     </div>
   );
 }

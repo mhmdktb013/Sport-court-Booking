@@ -57,86 +57,63 @@ const DateBar = () => {
   const isSelectedDateToday = selectedDate === formatDateObj(new Date());
 
   const readableSelectedDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
+    weekday: 'short',
+    month: 'short',
     day: 'numeric',
-    year: 'numeric',
   });
 
   return (
-    <div style={{ marginBottom: '1.5rem' }}>
-      {/* Date Bar Header */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1rem',
-        gap: '0.75rem',
-      }}>
-        <div className="flex items-center gap-3">
-          <CalendarIcon size={20} color="var(--primary)" />
-          <div>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Selected Date</span>
-            <div style={{ fontSize: '1.125rem', fontWeight: 800, color: '#fff' }}>
-              {readableSelectedDate}
-            </div>
-          </div>
+    <div className="bk-datebar">
+      <div className="bk-datebar-top">
+        <div className="bk-datebar-current">
+          <CalendarIcon size={16} color="var(--primary)" />
+          <span>{readableSelectedDate}</span>
         </div>
 
-        {/* Date Controls & Native Picker */}
-        <div className="flex items-center gap-2">
+        <div className="bk-datebar-actions">
           {!isSelectedDateToday && (
             <button
               onClick={() => setSelectedDate(formatDateObj(new Date()))}
               className="btn btn-secondary btn-sm"
             >
-              Jump to Today
+              Today
             </button>
           )}
 
-          <div style={{ position: 'relative' }}>
-            <input
-              type="date"
-              value={selectedDate}
-              min={formatDateObj(new Date())}
-              onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-              className="input-control"
-              style={{
-                padding: '0.4rem 0.75rem',
-                fontSize: '0.8125rem',
-                colorScheme: 'dark',
-                cursor: 'pointer',
-              }}
-            />
-          </div>
+          <input
+            type="date"
+            value={selectedDate}
+            min={formatDateObj(new Date())}
+            onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+            className="input-control bk-date-input"
+            aria-label="Pick a date"
+          />
 
           <button
             onClick={handlePrevDay}
             disabled={isSelectedDateToday}
-            className="btn btn-secondary btn-sm"
-            style={{ padding: '0.5rem', opacity: isSelectedDateToday ? 0.4 : 1 }}
-            title="Previous Day"
+            className="btn btn-secondary btn-sm bk-icon-btn"
+            title="Previous day"
+            aria-label="Previous day"
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={16} />
           </button>
           <button
             onClick={handleNextDay}
-            className="btn btn-secondary btn-sm"
-            style={{ padding: '0.5rem' }}
-            title="Next Day"
+            className="btn btn-secondary btn-sm bk-icon-btn"
+            title="Next day"
+            aria-label="Next day"
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={16} />
           </button>
         </div>
       </div>
 
-      {/* 14-Day Horizontal Scrollable Pills */}
       <div className="date-selector-bar">
         {pills.map((pill) => {
           const isSelected = pill.dateStr === selectedDate;
           return (
-            <div
+            <button
               key={pill.dateStr}
               onClick={() => setSelectedDate(pill.dateStr)}
               className={`date-pill ${isSelected ? 'active' : ''}`}
@@ -144,7 +121,7 @@ const DateBar = () => {
               <span className="day-name">{pill.dayName}</span>
               <span className="day-number">{pill.dayNum}</span>
               <span className="month-name">{pill.monthName}</span>
-            </div>
+            </button>
           );
         })}
       </div>
