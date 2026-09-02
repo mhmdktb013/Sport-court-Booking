@@ -3,9 +3,12 @@ import jwt from 'jsonwebtoken';
 import User from '../models/userModel.js';
 import Otp from '../models/otpModel.js';
 import notificationService from '../services/notificationService.js';
+import { JWT_SECRET, OTP_ENFORCED } from '../config/env.js';
+
+const MAX_OTP_ATTEMPTS = 5;
 
 const generateToken = (id, venueId, role) => {
-  return jwt.sign({ id, venueId, role }, process.env.JWT_SECRET || 'fallback_secret', {
+  return jwt.sign({ id, venueId, role }, JWT_SECRET, {
     expiresIn: '30d',
   });
 };
@@ -66,30 +69,32 @@ export const sendPhoneOtp = asyncHandler(async (req, res) => {
     throw new Error('A valid phone number is required');
   }
 
+  if (!OTP_ENFORCED) {
+    return res.json({
+      success: true,
+      enforced: false,
+      message: 'Phone verification is not required at this time',
+    });
+  }
+
   const cleanPhone = phone.trim();
-
-  // Generate 6-digit OTP code (or fixed 123456 in dev/test)
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-  // Delete previous OTP for this phone
   await Otp.deleteMany({ phone: cleanPhone });
 
-  // Save new OTP
   await Otp.create({
     phone: cleanPhone,
     code,
     expiresAt,
   });
 
-  // Call notification hook
   await notificationService.sendOtp(cleanPhone, code);
 
   res.json({
     success: true,
+    enforced: true,
     message: 'Verification code sent to your phone',
-    // In dev mode, return code to facilitate instant testing
-    devCode: code,
   });
 });
 
@@ -99,6 +104,15 @@ export const sendPhoneOtp = asyncHandler(async (req, res) => {
 export const verifyPhoneOtp = asyncHandler(async (req, res) => {
   const { phone, code } = req.body;
 
+  if (!OTP_ENFORCED) {
+    return res.json({
+      success: true,
+      enforced: false,
+      verified: false,
+      message: 'Phone verification is not required at this time',
+    });
+  }
+
   if (!phone || !code) {
     res.status(400);
     throw new Error('Phone number and code are required');
@@ -106,22 +120,25 @@ export const verifyPhoneOtp = asyncHandler(async (req, res) => {
 
   const cleanPhone = phone.trim();
 
-  // Allow standard dev code '123456' for rapid developer testing
-  if (code === '123456') {
-    return res.json({
-      success: true,
-      verified: true,
-      message: 'Phone number verified successfully',
-    });
-  }
-
   const otpRecord = await Otp.findOne({
     phone: cleanPhone,
-    code: code.trim(),
     expiresAt: { $gt: new Date() },
   });
 
   if (!otpRecord) {
+    res.status(400);
+    throw new Error('Invalid or expired verification code');
+  }
+
+  if (otpRecord.attempts >= MAX_OTP_ATTEMPTS) {
+    await otpRecord.deleteOne();
+    res.status(429);
+    throw new Error('Too many incorrect attempts. Please request a new code.');
+  }
+
+  if (otpRecord.code !== code.trim()) {
+    otpRecord.attempts += 1;
+    await otpRecord.save();
     res.status(400);
     throw new Error('Invalid or expired verification code');
   }
@@ -131,6 +148,7 @@ export const verifyPhoneOtp = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
+    enforced: true,
     verified: true,
     message: 'Phone number verified successfully',
   });

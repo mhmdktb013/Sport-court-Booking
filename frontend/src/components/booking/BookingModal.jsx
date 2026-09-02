@@ -18,7 +18,6 @@ const BookingModal = () => {
     notes: '',
   });
   const [otpCode, setOtpCode] = useState('');
-  const [devOtpHint, setDevOtpHint] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -40,7 +39,25 @@ const BookingModal = () => {
     }));
   };
 
-  // Step 1: Proceed to phone verification
+  const submitBooking = async () => {
+    const bookingPayload = {
+      courtId: court._id,
+      date,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      customerName: formData.customerName,
+      customerPhone: formData.customerPhone,
+      customerEmail: formData.customerEmail,
+      notes: formData.notes,
+    };
+
+    const res = await bookingService.createBooking(bookingPayload);
+    if (res.data.success) {
+      handleBookingSuccess(res.data.booking);
+    }
+  };
+
+  // Step 1: Request a code, or book straight away when verification is disabled
   const handleProceedToOtp = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -57,18 +74,20 @@ const BookingModal = () => {
     setSubmitting(true);
     try {
       const res = await authService.sendOtp(formData.customerPhone);
-      if (res.data.success) {
-        if (res.data.devCode) {
-          setDevOtpHint(res.data.devCode);
-          setOtpCode(res.data.devCode); // Pre-fill for instant frictionless testing
-        }
-        setStep('otp');
+
+      if (res.data.enforced === false) {
+        await submitBooking();
+        return;
       }
-    } catch (err) {
-      // If error, let user proceed with fallback dev verification
-      setDevOtpHint('123456');
-      setOtpCode('123456');
+
+      setOtpCode('');
       setStep('otp');
+    } catch (err) {
+      console.error('Booking step failed:', err);
+      setErrorMsg(
+        err.response?.data?.message ||
+          'Could not start your booking. Please try again in a moment.'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -78,28 +97,17 @@ const BookingModal = () => {
   const handleConfirmBooking = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+
+    if (!otpCode.trim()) {
+      setErrorMsg('Please enter the verification code sent to your phone');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      // 1. Verify OTP
-      await authService.verifyOtp(formData.customerPhone, otpCode || '123456');
-
-      // 2. Submit Booking
-      const bookingPayload = {
-        courtId: court._id,
-        date,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        customerName: formData.customerName,
-        customerPhone: formData.customerPhone,
-        customerEmail: formData.customerEmail,
-        notes: formData.notes,
-      };
-
-      const res = await bookingService.createBooking(bookingPayload);
-      if (res.data.success) {
-        handleBookingSuccess(res.data.booking);
-      }
+      await authService.verifyOtp(formData.customerPhone, otpCode.trim());
+      await submitBooking();
     } catch (err) {
       console.error('Booking failed:', err);
       const msg =
@@ -255,9 +263,9 @@ const BookingModal = () => {
               className="btn btn-primary"
               style={{ flex: 2 }}
             >
-              {submitting ? 'Sending Code...' : (
+              {submitting ? 'Confirming...' : (
                 <>
-                  Continue to Verify <ArrowRight size={16} />
+                  Continue <ArrowRight size={16} />
                 </>
               )}
             </button>
@@ -284,7 +292,7 @@ const BookingModal = () => {
               maxLength={6}
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value)}
-              placeholder="123456"
+              placeholder="------"
               required
               className="input-control"
               style={{
@@ -295,11 +303,6 @@ const BookingModal = () => {
                 fontWeight: 700,
               }}
             />
-            {devOtpHint && (
-              <span style={{ fontSize: '0.75rem', color: 'var(--primary)', textAlign: 'center', marginTop: '4px' }}>
-                ✓ Verification code autodetected: <strong>{devOtpHint}</strong>
-              </span>
-            )}
           </div>
 
           <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.75rem' }}>

@@ -1,9 +1,10 @@
+import './config/env.js';
 import express from 'express';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
 import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 import connectDB from './config/db.js';
 import courtRoutes from './routes/courtRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
@@ -14,12 +15,14 @@ import venueRoutes from './routes/venueRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Connect Database
 connectDB();
 
 const app = express();
+
+// Render/Vercel sit behind a proxy, so client IPs arrive via X-Forwarded-For
+app.set('trust proxy', 1);
 
 // CORS Configuration for Production & Development
 const configuredOrigins = process.env.FRONTEND_URL
@@ -62,6 +65,24 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many attempts. Please try again in a few minutes.' },
+});
+
+// Only throttles writes; reading a booking by reference stays unrestricted
+const bookingLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'GET',
+  message: { message: 'Too many booking requests. Please try again later.' },
+});
+
 // Root Route
 app.get('/', (req, res) => {
   res.json({
@@ -86,10 +107,10 @@ app.get('/api/health', (req, res) => {
 
 // API Routes
 app.use('/api/courts', courtRoutes);
-app.use('/api/bookings', bookingRoutes);
+app.use('/api/bookings', bookingLimiter, bookingRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/venues', venueRoutes);
 
 // Error Middlewares

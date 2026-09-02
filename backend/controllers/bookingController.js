@@ -3,8 +3,10 @@ import Booking from '../models/bookingModel.js';
 import Court from '../models/courtModel.js';
 import BlockedSlot from '../models/blockedSlotModel.js';
 import Venue from '../models/venueModel.js';
+import Otp from '../models/otpModel.js';
 import notificationService from '../services/notificationService.js';
 import { isSlotInPast, calculateSlotPrice } from '../services/availabilityEngine.js';
+import { OTP_ENFORCED } from '../config/env.js';
 
 // Helper to generate a unique readable booking ID (e.g. SZ-84920)
 const generateBookingCode = () => {
@@ -98,12 +100,32 @@ export const createBooking = asyncHandler(async (req, res) => {
     codeExists = await Booking.findOne({ bookingId });
   }
 
-  // 4. Calculate total price and atomic lock key
+  // 4. Confirm the phone was actually verified (admins book on behalf of walk-ins)
+  const isAdminBooking = req.user && (req.user.role === 'admin' || req.user.role === 'manager');
+  let isPhoneVerified = false;
+
+  if (OTP_ENFORCED && !isAdminBooking) {
+    const verifiedOtp = await Otp.findOne({
+      phone: customerPhone.trim(),
+      verified: true,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!verifiedOtp) {
+      res.status(403);
+      throw new Error('Phone number is not verified. Please request a new verification code.');
+    }
+
+    isPhoneVerified = true;
+    await verifiedOtp.deleteOne();
+  }
+
+  // 5. Calculate total price and atomic lock key
   const venue = await Venue.findOne({ venueId: court.venueId });
   const price = calculateSlotPrice(court.pricePerHour, duration, startTime, venue);
   const slotLockKey = `${courtId}_${date}_${startTime}`;
 
-  // 5. Create booking record with atomic database constraint
+  // 6. Create booking record with atomic database constraint
   let booking;
   try {
     booking = await Booking.create({
@@ -123,8 +145,8 @@ export const createBooking = asyncHandler(async (req, res) => {
       customerEmail: customerEmail ? customerEmail.trim() : '',
       notes: notes || '',
       status: 'confirmed',
-      createdBy: req.user && req.user.role === 'admin' ? 'admin' : 'customer',
-      isPhoneVerified: true,
+      createdBy: isAdminBooking ? 'admin' : 'customer',
+      isPhoneVerified,
     });
   } catch (createErr) {
     if (createErr.code === 11000) {
@@ -134,7 +156,7 @@ export const createBooking = asyncHandler(async (req, res) => {
     throw createErr;
   }
 
-  // 6. Trigger notification hook (prepared for WhatsApp in final phase)
+  // 7. Trigger notification hook (prepared for WhatsApp in final phase)
   await notificationService.onBookingConfirmed(booking);
 
   res.status(201).json({
