@@ -31,7 +31,7 @@ const Footer = () => {
       marginTop: 'auto',
     }}>
       <div className="container">
-        <div className="grid grid-cols-1 sm-grid-cols-2 lg-grid-cols-4 gap-8" style={{ marginBottom: '3rem' }}>
+        <div className="grid grid-cols-1 sm-grid-cols-2 lg-grid-cols-3 gap-8" style={{ marginBottom: '3rem' }}>
           {/* Col 1: Brand */}
           <div>
             <div className="flex items-center gap-3" style={{ marginBottom: '1rem' }}>
@@ -82,20 +82,7 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Col 3: Sports Offered */}
-          <div>
-            <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#fff', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Sports Facilities
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              <span>⚽ 7v7 & 5v5 FIFA AstroTurf Pitches</span>
-              <span>🎾 World Padel Tour Panoramic Courts</span>
-              <span>🎾 Clay & Acrylic Hard Tennis Courts</span>
-              <span>🏀 FIBA Regulation Hardwood Arena</span>
-            </div>
-          </div>
-
-          {/* Col 4: Facility Info */}
+          {/* Col 3: Facility Info */}
           <div>
             <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#fff', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Facility Details
