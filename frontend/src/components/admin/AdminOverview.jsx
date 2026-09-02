@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/api';
 import { useVenue } from '../../context/VenueContext';
-import { DollarSign, Calendar, Trophy, Users, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { Calendar, Trophy, Users, ArrowUpRight, CheckCircle2, Clock } from 'lucide-react';
 
 const AdminOverview = ({ onNavigateTab }) => {
   const { venue } = useVenue();
@@ -30,28 +30,22 @@ const AdminOverview = ({ onNavigateTab }) => {
   }
 
   const { metrics, recentBookings } = data || {
-    metrics: { totalCourts: 0, activeCourts: 0, totalBookings: 0, todayBookingsCount: 0, todayRevenue: 0, totalRevenue: 0 },
+    metrics: { totalCourts: 0, activeCourts: 0, totalBookings: 0, todayBookingsCount: 0 },
     recentBookings: [],
   };
 
   const statCards = [
     {
-      label: "Today's Revenue",
-      value: `${currencySymbol}${metrics.todayRevenue}`,
-      icon: <DollarSign size={22} color="#10b981" />,
-      sub: `${metrics.todayBookingsCount} matches today`,
-    },
-    {
-      label: "Total Gross Revenue",
-      value: `${currencySymbol}${metrics.totalRevenue}`,
-      icon: <DollarSign size={22} color="#3b82f6" />,
-      sub: 'All-time confirmed matches',
+      label: "Today's Bookings",
+      value: metrics.todayBookingsCount,
+      icon: <Clock size={22} color="var(--primary)" />,
+      sub: 'Matches scheduled for today',
     },
     {
       label: "Total Bookings",
       value: metrics.totalBookings,
-      icon: <Calendar size={22} color="#f97316" />,
-      sub: 'System-wide reservations',
+      icon: <CheckCircle2 size={22} color="#3b82f6" />,
+      sub: 'All-time confirmed reservations',
     },
     {
       label: "Active Sports Courts",
@@ -64,7 +58,7 @@ const AdminOverview = ({ onNavigateTab }) => {
   return (
     <div>
       {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 sm-grid-cols-2 lg-grid-cols-4 gap-6" style={{ marginBottom: '2.5rem' }}>
+      <div className="grid grid-cols-1 sm-grid-cols-3 gap-6" style={{ marginBottom: '2.5rem' }}>
         {statCards.map((stat, idx) => (
           <div key={idx} className="card" style={{ padding: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
